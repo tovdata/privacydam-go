@@ -9,9 +9,9 @@ import (
 	// AWS
 
 	// Model
-	"privacydam-go/core/model"
+	"github.com/tovdata/privacydam-go/core/model"
 	// Util
-	"privacydam-go/core/db"
+	"github.com/tovdata/privacydam-go/core/db"
 )
 
 func GenerateApi(ctx context.Context, api model.Api) error {

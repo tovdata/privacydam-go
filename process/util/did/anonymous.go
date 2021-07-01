@@ -12,7 +12,7 @@ import (
 	"strings"
 
 	// Model
-	model "privacydam-go/core/model"
+	model "github.com/tovdata/privacydam-go/core/model"
 )
 
 // define some error code
