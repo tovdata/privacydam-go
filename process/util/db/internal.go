@@ -8,9 +8,9 @@ import (
 	"github.com/jmoiron/sqlx"
 
 	// Model
-	"privacydam-go/core/model"
+	"github.com/tovdata/privacydam-go/core/model"
 	// Core (database pool)
-	coreDB "privacydam-go/core/db"
+	coreDB "github.com/tovdata/privacydam-go/core/db"
 )
 
 func In_findApi(ctx context.Context, param string) (model.Api, error) {

@@ -16,7 +16,7 @@ import (
 	"github.com/aws/aws-xray-sdk-go/xray"
 
 	// Util
-	"privacydam-go/core/db"
+	"github.com/tovdata/privacydam-go/core/db"
 )
 
 var (
