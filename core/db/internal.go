@@ -6,7 +6,7 @@ import (
 	"github.com/jmoiron/sqlx"
 
 	// Model
-	"privacydam-go/core/model"
+	"github.com/tovdata/privacydam-go/core/model"
 )
 
 func In_getDatabaseConnectionList(ctx context.Context) ([]model.Source, error) {

@@ -4,9 +4,9 @@ import (
 	"encoding/json"
 
 	// Model
-	"privacydam-go/core/model"
+	"github.com/tovdata/privacydam-go/core/model"
 	// DB
-	"privacydam-go/core/db"
+	"github.com/tovdata/privacydam-go/core/db"
 )
 
 func EmptyEvaluation() model.Evaluation {

@@ -13,10 +13,10 @@ import (
 	// AWS
 	"github.com/aws/aws-xray-sdk-go/xray"
 	// Model
-	"privacydam-go/core/model"
+	"github.com/tovdata/privacydam-go/core/model"
 	// Util
-	"privacydam-go/core/log"
-	"privacydam-go/core/util"
+	"github.com/tovdata/privacydam-go/core/log"
+	"github.com/tovdata/privacydam-go/core/util"
 
 	// Driver
 	_ "github.com/go-sql-driver/mysql"

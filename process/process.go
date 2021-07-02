@@ -22,13 +22,13 @@ import (
 	"github.com/aws/aws-xray-sdk-go/xray"
 
 	// Model
-	"privacydam-go/core/model"
+	"github.com/tovdata/privacydam-go/core/model"
 
 	// PrivacyDAM package
-	"privacydam-go/core"
-	"privacydam-go/core/util"
-	"privacydam-go/process/util/auth"
-	"privacydam-go/process/util/db"
+	"github.com/tovdata/privacydam-go/core"
+	"github.com/tovdata/privacydam-go/core/util"
+	"github.com/tovdata/privacydam-go/process/util/auth"
+	"github.com/tovdata/privacydam-go/process/util/db"
 )
 
 // func ProcessTestInEcho(ctx echo.Context) error {

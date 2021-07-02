@@ -18,13 +18,13 @@ import (
 	"github.com/aws/aws-xray-sdk-go/xray"
 
 	// Model
-	"privacydam-go/core/model"
+	"github.com/tovdata/privacydam-go/core/model"
 	// Core (database pool)
-	coreDB "privacydam-go/core/db"
+	coreDB "github.com/tovdata/privacydam-go/core/db"
 	// Util
-	util "privacydam-go/core/util"
-	"privacydam-go/process/util/did"
-	"privacydam-go/process/util/kAno"
+	util "github.com/tovdata/privacydam-go/core/util"
+	"github.com/tovdata/privacydam-go/process/util/did"
+	"github.com/tovdata/privacydam-go/process/util/kAno"
 )
 
 func Ex_testConnection(ctx context.Context, driverName string, dsn string) error {
