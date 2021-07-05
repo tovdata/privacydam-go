@@ -1,6 +1,10 @@
 package model
 
-import "github.com/jmoiron/sqlx"
+import (
+	"database/sql"
+
+	"github.com/jmoiron/sqlx"
+)
 
 /* For authentication and acceess logging */
 // Accessor information format for access logging
@@ -45,10 +49,10 @@ type Source struct {
 
 // information format to query
 type QueryContent struct {
-	Syntax        string                    `json:"syntax"`
+	Syntax        string                    `json:"syntax" db:"syntax"`
 	ParamsKey     []string                  `json:"paramsKey,omitempty"`
 	ParamsValue   []interface{}             `json:"paramsValue,omitempty"`
-	RawDidOptions string                    `json:"rawDidOptions,omitempty"`
+	RawDidOptions sql.NullString            `json:"rawDidOptions,omitempty" db:"rawDidOptions"`
 	DidOptions    map[string]AnoParamOption `json:"didOptions,omitempty"`
 }
 

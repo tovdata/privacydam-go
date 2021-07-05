@@ -183,8 +183,11 @@ func Ex_exportData(ctx context.Context, res http.ResponseWriter, apiName string,
 	for i := uint64(0); i < nAnonyProc; i++ {
 		go processDeIdentification(subCtx, tracking, didOptions, columns, tDataQueue, aDataQueue, quitAnony)
 	}
+
+	// Check K-Ano evaluation condition
+	isEval := checkAnoEvaluationCondition(didOptions)
 	// Write data
-	go writeExportedData(subCtx, tracking, res, apiName, columns, aDataQueue, quitProce)
+	go writeExportedData(subCtx, tracking, res, apiName, columns, isEval, aDataQueue, quitProce)
 
 	// Exit logic
 	completedTrans := uint64(0)
@@ -311,8 +314,11 @@ func Ex_exportDataOnLambda(ctx context.Context, res *events.APIGatewayProxyRespo
 	for i := uint64(0); i < nAnonyProc; i++ {
 		go processDeIdentification(subCtx, tracking, didOptions, columns, tDataQueue, aDataQueue, quitAnony)
 	}
+
+	// Check K-Ano evaluation condition
+	isEval := checkAnoEvaluationCondition(didOptions)
 	// Write data
-	go writeExportedDataOnLambda(subCtx, tracking, res, apiName, columns, aDataQueue, quitProce)
+	go writeExportedDataOnLambda(subCtx, tracking, res, apiName, columns, isEval, aDataQueue, quitProce)
 
 	// Exit logic
 	completedTrans := uint64(0)
@@ -350,6 +356,29 @@ func Ex_exportDataOnLambda(ctx context.Context, res *events.APIGatewayProxyRespo
 				subSegment.Close(nil)
 			}
 			return evaluation, nil
+		}
+	}
+}
+
+func checkAnoEvaluationCondition(didOptions map[string]model.AnoParamOption) bool {
+	// Get options key count
+	total := len(didOptions)
+
+	if total == 0 {
+		return false
+	} else {
+		count := 0
+		for _, option := range didOptions {
+			if option.Level > 0 {
+				break
+			}
+			count++
+		}
+
+		if total == count {
+			return false
+		} else {
+			return true
 		}
 	}
 }
@@ -472,7 +501,7 @@ func processDeIdentification(ctx context.Context, tracking bool, options map[str
 	quitAnony <- true
 }
 
-func writeExportedData(ctx context.Context, tracking bool, res http.ResponseWriter, name string, header []string, aDataQueue <-chan []string, quitProce chan<- model.Evaluation) {
+func writeExportedData(ctx context.Context, tracking bool, res http.ResponseWriter, name string, header []string, isEval bool, aDataQueue <-chan []string, quitProce chan<- model.Evaluation) {
 	// Set the subsegment
 	if tracking {
 		_, subSegment := xray.BeginSubsegment(ctx, "Write data in response body")
@@ -490,8 +519,11 @@ func writeExportedData(ctx context.Context, tracking bool, res http.ResponseWrit
 	res.Header().Set("Content-Type", "application/octet-stream")
 
 	// Create k-anonymity tester
-	evaluater := new(kAno.AnoTester)
-	evaluater.New(len(header), 2)
+	var evaluater *kAno.AnoTester
+	if isEval {
+		evaluater = new(kAno.AnoTester)
+		evaluater.New(len(header), 2)
+	}
 
 	// Transform header data to csv format
 	lineCount := int64(0)
@@ -500,7 +532,9 @@ func writeExportedData(ctx context.Context, tracking bool, res http.ResponseWrit
 	// Export process
 	for row, ok := <-aDataQueue; ok; row, ok = <-aDataQueue {
 		// Add data to evaluate k-anonymity
-		evaluater.AddStrings(row)
+		if isEval {
+			evaluater.AddStrings(row)
+		}
 		// Transform exported data and write data
 		buffer.Reset()
 		buffer = transformToCsvFormat(row)
@@ -514,11 +548,15 @@ func writeExportedData(ctx context.Context, tracking bool, res http.ResponseWrit
 	buffer.WriteString("lines.")
 
 	// Evaluate k-anonymity
-	evalResult, actValue := evaluater.Eval()
 	evaluation := model.Evaluation{
 		ApiName: name,
-		Result:  strconv.FormatBool(evalResult),
-		Value:   int64(actValue),
+		Result:  "none",
+		Value:   int64(0),
+	}
+	if isEval {
+		evalResult, actValue := evaluater.Eval()
+		evaluation.Result = strconv.FormatBool(evalResult)
+		evaluation.Value = int64(actValue)
 	}
 
 	// Exit
@@ -526,7 +564,7 @@ func writeExportedData(ctx context.Context, tracking bool, res http.ResponseWrit
 	evaluater = nil
 }
 
-func writeExportedDataOnLambda(ctx context.Context, tracking bool, res *events.APIGatewayProxyResponse, name string, header []string, aDataQueue <-chan []string, quitProce chan<- model.Evaluation) {
+func writeExportedDataOnLambda(ctx context.Context, tracking bool, res *events.APIGatewayProxyResponse, name string, header []string, isEval bool, aDataQueue <-chan []string, quitProce chan<- model.Evaluation) {
 	// Set the subsegment
 	if tracking {
 		_, subSegment := xray.BeginSubsegment(ctx, "Write data in response body")
@@ -534,8 +572,11 @@ func writeExportedDataOnLambda(ctx context.Context, tracking bool, res *events.A
 	}
 
 	// Create k-anonymity tester
-	evaluater := new(kAno.AnoTester)
-	evaluater.New(len(header), 2)
+	var evaluater *kAno.AnoTester
+	if isEval {
+		evaluater = new(kAno.AnoTester)
+		evaluater.New(len(header), 2)
+	}
 
 	// Set body
 	var body bytes.Buffer
@@ -547,7 +588,9 @@ func writeExportedDataOnLambda(ctx context.Context, tracking bool, res *events.A
 	// Export process
 	for row, ok := <-aDataQueue; ok; row, ok = <-aDataQueue {
 		// Add data to evaluate k-anonymity
-		evaluater.AddStrings(row)
+		if isEval {
+			evaluater.AddStrings(row)
+		}
 		// Transform exported data and write data
 		buffer.Reset()
 		buffer = transformToCsvFormat(row)
@@ -565,11 +608,15 @@ func writeExportedDataOnLambda(ctx context.Context, tracking bool, res *events.A
 	buffer.WriteString("lines.")
 
 	// Evaluate k-anonymity
-	evalResult, actValue := evaluater.Eval()
 	evaluation := model.Evaluation{
 		ApiName: name,
-		Result:  strconv.FormatBool(evalResult),
-		Value:   int64(actValue),
+		Result:  "none",
+		Value:   int64(0),
+	}
+	if isEval {
+		evalResult, actValue := evaluater.Eval()
+		evaluation.Result = strconv.FormatBool(evalResult)
+		evaluation.Value = int64(actValue)
 	}
 
 	// Exit

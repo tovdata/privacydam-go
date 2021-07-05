@@ -2,11 +2,16 @@ package core
 
 import (
 	"encoding/json"
+	"sync"
 
 	// Model
 	"github.com/tovdata/privacydam-go/core/model"
 	// DB
 	"github.com/tovdata/privacydam-go/core/db"
+)
+
+var (
+	Mutex = &sync.Mutex{}
 )
 
 func EmptyEvaluation() model.Evaluation {
@@ -46,4 +51,8 @@ func GetInternalDatabase() (model.ConnInfo, error) {
 
 func GetExternalDatabase(key interface{}) (model.ConnInfo, error) {
 	return db.GetDatabase("external", key)
+}
+
+func GetApiList() map[string]model.Api {
+	return apis
 }

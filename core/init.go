@@ -6,8 +6,11 @@ import (
 	"errors"
 	"fmt"
 	"io/ioutil"
+	"log"
 	"os"
 	"reflect"
+	"sync"
+	"time"
 
 	// AWS
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -15,11 +18,15 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/sqs"
 	"github.com/aws/aws-xray-sdk-go/xray"
 
+	// Model
+	"github.com/tovdata/privacydam-go/core/model"
+
 	// Util
 	"github.com/tovdata/privacydam-go/core/db"
 )
 
 var (
+	apis      = make(map[string]model.Api)
 	sqsClient *sqs.Client
 )
 
@@ -64,7 +71,6 @@ func ConfigTracking(configPath string) error {
 	} else {
 		return errors.New("Configuration failed (not found databases tracking status)")
 	}
-
 	return nil
 }
 
@@ -84,6 +90,49 @@ func InitializeDatabase(ctx context.Context, configPath interface{}) error {
 
 	// Initialize database
 	return db.Initialization(ctx)
+}
+
+/*
+ * Initialize api (set repeat function to get a list of api)
+ * <IN> ctx (context.Context): context
+ * <IN> minute (int64): repeat period
+ */
+func InitializeApi(ctx context.Context, minute int64) {
+	// Init
+	UpdateApiList(ctx, Mutex)
+
+	// Set time tick
+	tick := time.Tick(time.Minute * time.Duration(minute))
+	// Set repeat function
+	go func() {
+		for range tick {
+			UpdateApiList(ctx, Mutex)
+		}
+	}()
+}
+
+/*
+ * Update a list of api
+ * <IN> ctx (context.Context): context
+ * <IN> mutex (*sync.Mutex): mutex object (for sync)
+ */
+func UpdateApiList(ctx context.Context, mutex *sync.Mutex) {
+	// Lock
+	mutex.Lock()
+	// Get a list of api
+	list, err := db.In_getApiList(ctx)
+	if err != nil {
+		log.Fatal(err.Error())
+	}
+	// Clear api
+	apis = make(map[string]model.Api)
+	// Transform to map
+	for _, api := range list {
+		apis[api.Alias] = api
+	}
+
+	// Unlock
+	mutex.Unlock()
 }
 
 /*

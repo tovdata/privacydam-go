@@ -9,11 +9,15 @@ import (
 
 	// Model
 	"github.com/tovdata/privacydam-go/core/model"
+
+	// PrivacyDAM package
+	core "github.com/tovdata/privacydam-go/core"
+
 	// Core (database pool)
 	coreDB "github.com/tovdata/privacydam-go/core/db"
 )
 
-func In_findApi(ctx context.Context, param string) (model.Api, error) {
+func In_findApiFromDB(ctx context.Context, param string) (model.Api, error) {
 	// Create api structure
 	info := model.Api{
 		QueryContent: model.QueryContent{},
@@ -64,7 +68,7 @@ func In_findApi(ctx context.Context, param string) (model.Api, error) {
 	return info, err
 }
 
-func In_getDeIdentificationOptions(ctx context.Context, id string) (string, error) {
+func In_getDeIdentificationOptionsFromDB(ctx context.Context, id string) (string, error) {
 	// Set default return value
 	var options string
 
@@ -97,6 +101,22 @@ func In_getDeIdentificationOptions(ctx context.Context, id string) (string, erro
 
 	// Return
 	return options, rows.Err()
+}
+
+func In_findApi(param string) (model.Api, error) {
+	// Lock
+	core.Mutex.Lock()
+	// Get a list of api
+	apis := core.GetApiList()
+	// Unlcok
+	core.Mutex.Unlock()
+
+	// Find api
+	if data, ok := apis[param]; ok {
+		return data, nil
+	} else {
+		return model.Api{}, errors.New("Not found API (Please check if the API alias is correct)")
+	}
 }
 
 func In_writeProcessLog(ctx context.Context, accessor model.Accessor, apiId string, apiType string, evaluation model.Evaluation, finalResult string) error {
