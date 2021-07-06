@@ -7,7 +7,6 @@ import (
 	"encoding/hex"
 	"fmt"
 	"math"
-	"regexp"
 	"strconv"
 	"strings"
 
@@ -146,7 +145,7 @@ func BuildRangingFunc(options model.AnoOption) func(string) string {
 	boundary := make([]float64, binNum+1, binNum+1)
 	for i := 0; i < binNum; i++ {
 		//boundary = append(boundary, lowBound+((upBound-lowBound)/float64(binNum))*float64(i))
-		boundary[i] = lowBound + ((upBound-lowBound)/float64(binNum)) * float64(i)
+		boundary[i] = lowBound + ((upBound-lowBound)/float64(binNum))*float64(i)
 	}
 	//boundary = append(boundary, upBound)
 	boundary[binNum] = upBound
@@ -192,7 +191,7 @@ func BuildMaskingFunc(options model.AnoOption) func(string) string {
 	//reString := fmt.Sprintf("(^.{%v})(.*)(.{%v}$)", fore, aft)
 	//re := regexp.MustCompile(reString)
 
-	mask := strings.Repeat(maskChar, int(256))	// assume the Maximum Length of field is less than 256
+	mask := strings.Repeat(maskChar, int(256)) // assume the Maximum Length of field is less than 256
 
 	//reObject = re.compile(maskPattern.format(startlen=fore, endlen=aft))
 	return func(inString string) string {
@@ -207,10 +206,10 @@ func BuildMaskingFunc(options model.AnoOption) func(string) string {
 				//repeatNum := math.Ceil(float64(maskLen / len(maskChar)))
 				//mask := strings.Repeat(maskChar, int(repeatNum))
 				//return inString[resIndex[2]:resIndex[3]] + mask[0:maskLen] + inString[resIndex[6]:resIndex[7]]
-				return inString[0:fore] + mask[0:maskLen] + inString[len(inString) - int(aft):]
+				return inString[0:fore] + mask[0:maskLen] + inString[len(inString)-int(aft):]
 			}
 			//return inString[resIndex[2]:resIndex[3]] + maskChar + inString[resIndex[6]:resIndex[7]]
-			return inString[0:fore] + maskChar + inString[len(inString) - int(aft):]
+			return inString[0:fore] + maskChar + inString[len(inString)-int(aft):]
 		}
 		return ""
 	}
