@@ -2,6 +2,7 @@ package core
 
 import (
 	"encoding/json"
+	"runtime"
 	"sync"
 
 	// Model
@@ -11,7 +12,8 @@ import (
 )
 
 var (
-	Mutex = &sync.Mutex{}
+	Mutex        = &sync.Mutex{}
+	RoutineCount = 2
 )
 
 func EmptyEvaluation() model.Evaluation {
@@ -55,4 +57,17 @@ func GetExternalDatabase(key interface{}) (model.ConnInfo, error) {
 
 func GetApiList() map[string]model.Api {
 	return apis
+}
+
+func SetRoutineCount() {
+	// Set default go-routine count (min count: 4)
+	RoutineCount = runtime.NumCPU()
+	if RoutineCount < 4 {
+		RoutineCount = 4
+	}
+	runtime.GOMAXPROCS(RoutineCount * 2)
+}
+
+func GetRoutineCount() int {
+	return RoutineCount
 }

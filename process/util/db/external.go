@@ -8,7 +8,6 @@ import (
 	"log"
 	"net/http"
 	"os"
-	"runtime"
 	"strconv"
 	"strings"
 	"time"
@@ -98,7 +97,7 @@ func Ex_changeData(ctx context.Context, sourceId string, querySyntax string, par
 	}
 }
 
-func Ex_exportData(ctx context.Context, res http.ResponseWriter, apiName string, sourceId string, querySyntax string, params []interface{}, didOptions map[string]model.AnoParamOption) (model.Evaluation, error) {
+func Ex_exportData(ctx context.Context, res http.ResponseWriter, routineCount int, apiName string, sourceId string, querySyntax string, params []interface{}, didOptions map[string]model.AnoParamOption) (model.Evaluation, error) {
 	// Get tracking status
 	tracking := util.GetTrackingStatus("processing")
 
@@ -122,13 +121,6 @@ func Ex_exportData(ctx context.Context, res http.ResponseWriter, apiName string,
 	if err != nil {
 		queueSize = 10000
 	}
-
-	// Set default go-routine count (min count: 4)
-	routineCount := runtime.NumCPU()
-	if routineCount < 4 {
-		routineCount = 4
-	}
-	runtime.GOMAXPROCS(routineCount * 2)
 
 	// Set process count for go-routine
 	nTransProc := uint64(routineCount)
@@ -229,7 +221,7 @@ func Ex_exportData(ctx context.Context, res http.ResponseWriter, apiName string,
 	}
 }
 
-func Ex_exportDataOnLambda(ctx context.Context, res *events.APIGatewayProxyResponse, apiName string, sourceId string, querySyntax string, params []interface{}, didOptions map[string]model.AnoParamOption) (model.Evaluation, error) {
+func Ex_exportDataOnLambda(ctx context.Context, res *events.APIGatewayProxyResponse, routineCount int, apiName string, sourceId string, querySyntax string, params []interface{}, didOptions map[string]model.AnoParamOption) (model.Evaluation, error) {
 	// Get tracking status
 	tracking := util.GetTrackingStatus("processing")
 
@@ -253,13 +245,6 @@ func Ex_exportDataOnLambda(ctx context.Context, res *events.APIGatewayProxyRespo
 	if err != nil {
 		queueSize = 10000
 	}
-
-	// Set default go-routine count (min count: 4)
-	routineCount := runtime.NumCPU()
-	if routineCount < 4 {
-		routineCount = 4
-	}
-	runtime.GOMAXPROCS(routineCount * 2)
 
 	// Set process count for go-routine
 	nTransProc := uint64(routineCount)

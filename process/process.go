@@ -421,13 +421,19 @@ func CreateApiName(isTemp bool) string {
  * <OUT> (error): error object (contain nil)
  */
 func ExportDataOnServer(ctx context.Context, res http.ResponseWriter, api model.Api) (model.Evaluation, error) {
+	// Get routinCount
+	routineCount := core.GetRoutineCount()
+	if routineCount == 0 {
+		return model.Evaluation{}, errors.New("Invaild routine count")
+	}
+
 	// Check api name
 	name := api.Name
 	if api.Name == "" {
 		name = CreateApiName(true)
 	}
 	// Processing
-	return db.Ex_exportData(ctx, res, name, api.SourceId, api.QueryContent.Syntax, api.QueryContent.ParamsValue, api.QueryContent.DidOptions)
+	return db.Ex_exportData(ctx, res, routineCount, name, api.SourceId, api.QueryContent.Syntax, api.QueryContent.ParamsValue, api.QueryContent.DidOptions)
 }
 
 /*
@@ -444,13 +450,19 @@ func ExportDataOnServer(ctx context.Context, res http.ResponseWriter, api model.
  * <OUT> (error): error object (contain nil)
  */
 func ExportDataOnLambda(ctx context.Context, res *events.APIGatewayProxyResponse, api model.Api) (model.Evaluation, error) {
+	// Get routinCount
+	routineCount := core.GetRoutineCount()
+	if routineCount == 0 {
+		return model.Evaluation{}, errors.New("Invaild routine count")
+	}
+
 	// Check api name
 	name := api.Name
 	if api.Name == "" {
 		name = CreateApiName(true)
 	}
 	// Processing
-	return db.Ex_exportDataOnLambda(ctx, res, name, api.SourceId, api.QueryContent.Syntax, api.QueryContent.ParamsValue, api.QueryContent.DidOptions)
+	return db.Ex_exportDataOnLambda(ctx, res, routineCount, name, api.SourceId, api.QueryContent.Syntax, api.QueryContent.ParamsValue, api.QueryContent.DidOptions)
 }
 
 /*
