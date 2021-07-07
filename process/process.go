@@ -128,13 +128,13 @@ func VerifyApiAliasFormat(alias string) error {
 }
 
 /*
- * Get API information
+ * Get API information from internal database
  * <IN> ctx (context.Context): context
  * <IN> param (string): condition to find API (api_alias)
  * <OUT> (model.Api): api information format
  * <OUT> (error): error object (contain nil)
  */
-func GetApiInformation(ctx context.Context, param string) (model.Api, error) {
+func GetApiInformationFromDB(ctx context.Context, param string) (model.Api, error) {
 	// Get tracking status
 	tracking := util.GetTrackingStatus("processing")
 
@@ -147,7 +147,29 @@ func GetApiInformation(ctx context.Context, param string) (model.Api, error) {
 	}
 
 	// Find API using param
-	return db.In_findApi(subCtx, param)
+	return db.In_findApiFromDB(subCtx, param)
+}
+
+/*
+ * Get API information
+ * <IN> ctx (context.Context): context
+ * <IN> param (string): condition to find API (api_alias)
+ * <OUT> (model.Api): api information format
+ * <OUT> (error): error object (contain nil)
+ */
+func GetApiInformation(ctx context.Context, param string) (model.Api, error) {
+	// Get tracking status
+	tracking := util.GetTrackingStatus("processing")
+
+	// [For debug] set subsegment
+	var subSegment *xray.Segment
+	if tracking {
+		_, subSegment = xray.BeginSubsegment(ctx, "Find API information")
+		defer subSegment.Close(nil)
+	}
+
+	// Find API using param
+	return db.In_findApi(param)
 }
 
 /*
@@ -250,13 +272,13 @@ func verifyParameters(standard []interface{}, target []string) error {
 }
 
 /*
- * Get a de-identification options
+ * Get a de-identification options from internal database
  * <IN> ctx (context.Context): context
  * <IN> id (string): API id by generated database
  * <OUT> (map[string]model.AnoParamOption): de-identification options
  * <OUT> (error): error object (contain nil)
  */
-func GetDeIdentificationOptions(ctx context.Context, id string) (map[string]model.AnoParamOption, error) {
+func GetDeIdentificationOptionsFromDB(ctx context.Context, id string) (map[string]model.AnoParamOption, error) {
 	// Get tracking status
 	tracking := util.GetTrackingStatus("processing")
 
@@ -272,7 +294,7 @@ func GetDeIdentificationOptions(ctx context.Context, id string) (map[string]mode
 	var didOptions map[string]model.AnoParamOption
 
 	// Get de-identification options
-	rawOptions, err := db.In_getDeIdentificationOptions(subCtx, id)
+	rawOptions, err := db.In_getDeIdentificationOptionsFromDB(subCtx, id)
 	if err != nil {
 		return didOptions, err
 	}
@@ -282,6 +304,35 @@ func GetDeIdentificationOptions(ctx context.Context, id string) (map[string]mode
 		return didOptions, err
 	} else {
 		return nil, err
+	}
+}
+
+/*
+ * Transform to de-identification options
+ * <IN> ctx (context.Context): context
+ * <IN> rawDidOptions (string): raw de-identification options (string type)
+ * <OUT> (map[string]model.AnoParamOption): de-identification options
+ * <OUT> (error): error object (contain nil)
+ */
+func TransformDeIdentificationOptions(ctx context.Context, rawDidOptions string) (map[string]model.AnoParamOption, error) {
+	// Get tracking status
+	tracking := util.GetTrackingStatus("processing")
+
+	// [For debug] set subsegment
+	var subSegment *xray.Segment
+	if tracking {
+		_, subSegment = xray.BeginSubsegment(ctx, "Load de-identification options")
+		defer subSegment.Close(nil)
+	}
+
+	// Set default de-identification options
+	var didOptions map[string]model.AnoParamOption
+	// Transform to structure
+	if rawDidOptions != "" {
+		err := json.Unmarshal([]byte(rawDidOptions), &didOptions)
+		return didOptions, err
+	} else {
+		return nil, nil
 	}
 }
 
@@ -370,13 +421,19 @@ func CreateApiName(isTemp bool) string {
  * <OUT> (error): error object (contain nil)
  */
 func ExportDataOnServer(ctx context.Context, res http.ResponseWriter, api model.Api) (model.Evaluation, error) {
+	// Get routinCount
+	routineCount := core.GetRoutineCount()
+	if routineCount == 0 {
+		return model.Evaluation{}, errors.New("Invaild routine count")
+	}
+
 	// Check api name
 	name := api.Name
 	if api.Name == "" {
 		name = CreateApiName(true)
 	}
 	// Processing
-	return db.Ex_exportData(ctx, res, name, api.SourceId, api.QueryContent.Syntax, api.QueryContent.ParamsValue, api.QueryContent.DidOptions)
+	return db.Ex_exportData(ctx, res, routineCount, name, api.SourceId, api.QueryContent.Syntax, api.QueryContent.ParamsValue, api.QueryContent.DidOptions)
 }
 
 /*
@@ -393,13 +450,19 @@ func ExportDataOnServer(ctx context.Context, res http.ResponseWriter, api model.
  * <OUT> (error): error object (contain nil)
  */
 func ExportDataOnLambda(ctx context.Context, res *events.APIGatewayProxyResponse, api model.Api) (model.Evaluation, error) {
+	// Get routinCount
+	routineCount := core.GetRoutineCount()
+	if routineCount == 0 {
+		return model.Evaluation{}, errors.New("Invaild routine count")
+	}
+
 	// Check api name
 	name := api.Name
 	if api.Name == "" {
 		name = CreateApiName(true)
 	}
 	// Processing
-	return db.Ex_exportDataOnLambda(ctx, res, name, api.SourceId, api.QueryContent.Syntax, api.QueryContent.ParamsValue, api.QueryContent.DidOptions)
+	return db.Ex_exportDataOnLambda(ctx, res, routineCount, name, api.SourceId, api.QueryContent.Syntax, api.QueryContent.ParamsValue, api.QueryContent.DidOptions)
 }
 
 /*

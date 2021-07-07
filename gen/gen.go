@@ -75,7 +75,7 @@ func GenerateApi(ctx context.Context, api model.Api) error {
 		}
 	}
 
-	if api.QueryContent.RawDidOptions != "" {
+	if api.QueryContent.RawDidOptions.Valid && api.QueryContent.RawDidOptions.String != "" {
 		// Execute query (insert de-identification options)
 		var err error
 		querySyntax := `INSERT INTO did_option (api_id, options) VALUE (?, ?)`
