@@ -1,3 +1,4 @@
+// 데이터 비식별화 관련 패키지
 package did
 
 import (

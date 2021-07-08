@@ -1,3 +1,4 @@
+// PrivacyDAM 구현에 기본적으로 필요한 함수들이 정의된 패키지
 package core
 
 import (

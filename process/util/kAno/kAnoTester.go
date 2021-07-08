@@ -1,3 +1,4 @@
+// K-anonymity 평가 관련 패키지
 package kAno
 
 import (
@@ -67,7 +68,7 @@ type AnoTester struct {
 	//encoderList  map[int]*anoEncoder
 	finalEncoder anoEncoder
 	targetKValue int
-	fieldLen	int
+	fieldLen     int
 	evalFields   []bool
 }
 

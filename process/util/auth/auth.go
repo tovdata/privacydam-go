@@ -1,3 +1,4 @@
+// 인증 관련 패키지
 package auth
 
 import (
