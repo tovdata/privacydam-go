@@ -1,3 +1,4 @@
+// Database connection pool의 생성 및 connection 관리를 위한 패키지
 package db
 
 import (
@@ -15,8 +16,8 @@ import (
 	// Model
 	"github.com/tovdata/privacydam-go/core/model"
 	// Util
-	"github.com/tovdata/privacydam-go/core/log"
 	"github.com/tovdata/privacydam-go/core/util"
+	"github.com/tovdata/privacydam-go/process/util/logger"
 
 	// Driver
 	_ "github.com/go-sql-driver/mysql"
@@ -25,8 +26,9 @@ import (
 const (
 	INTERNAL_CONN_TIMEOUT = time.Second * 30
 	EXTERNAL_CONN_TIMEOUT = time.Second * 30
-	INTERNAL_CONN_LIMIT   = 8
-	EXTERNAL_CONN_LIMIT   = 8
+
+	INTERNAL_CONN_LIMIT = 8
+	EXTERNAL_CONN_LIMIT = 8
 )
 
 var (
@@ -36,11 +38,7 @@ var (
 	coreCount int
 )
 
-/*
- * Initialization (create internal and external database connection pool)
- * <IN> ctx (context.Context): context
- * <OUT> (error): error object (contain nil)
- */
+// 기본적인 초기화를 진행하는 함수로써 Go-routine을 사용할 CPU core의 개수를 설정하고, 내부 또는 외부에서 사용할 데이터베이스의 초기화 작업을 수행합니다.
 func Initialization(ctx context.Context) error {
 	// Set go-routine count
 	coreCount = runtime.NumCPU()
@@ -52,7 +50,7 @@ func Initialization(ctx context.Context) error {
 	if err := createInternalConnectionPool(ctx); err != nil {
 		return err
 	} else {
-		log.PrintMessage("notice", "Successful connection with internal database")
+		logger.PrintMessage("notice", "Successful connection with internal database")
 	}
 
 	// Create exteranl database connection pool
@@ -60,7 +58,7 @@ func Initialization(ctx context.Context) error {
 	if err := createExternalConnectionPool(ctx); err != nil {
 		return err
 	} else {
-		log.PrintMessage("notice", "Successful connection with external databases")
+		logger.PrintMessage("notice", "Successful connection with external databases")
 	}
 	return nil
 }
@@ -102,13 +100,12 @@ func createExternalConnectionPool(ctx context.Context) error {
 	return nil
 }
 
-/*
- * Create connection pool
- * <IN> ctx (context.Context): context
- * <IN> source (model.Source): source information object
- * <IN> isEx (bool): external databse or not
- * <OUT> (error): error object (contain nil)
- */
+// Database Connection Pool를 생성하는 함수입니다.
+// 생성된 Connection Pool들은 메모리 상에서 관리되며, 데이터베이스와의 데이터 일치성을 위해서 외부 데이터베이스에 대한 Connection 정보는 Polling을 통해 주기적으로 업데이트해주어야 합니다.
+//	# Parameters Description
+//	ctx (context.Context): context
+//	source (model.Source): source information object
+//	isEx (bool): external databse or not
 func CreateConnectionPool(ctx context.Context, source model.Source, isEx bool) error {
 	var db *sql.DB
 	var err error
@@ -130,7 +127,7 @@ func CreateConnectionPool(ctx context.Context, source model.Source, isEx bool) e
 	// Wapping for sqlx by connection type (internal, external)
 	wappingDB := sqlx.NewDb(db, source.Type)
 	// Set database options for connection pool
-	setConnectionPoolOptions(wappingDB, isEx)
+	SetConnectionPoolOptions(wappingDB, isEx)
 
 	// Test ping
 	if trackDB {
@@ -161,12 +158,11 @@ func CreateConnectionPool(ctx context.Context, source model.Source, isEx bool) e
 	return nil
 }
 
-/*
- * Set connection pool options
- * <IN> db (*sqlx.DB): connected database object
- * <IN> isEx (bool): external database or not
- */
-func setConnectionPoolOptions(db *sqlx.DB, isEx bool) {
+// Connected 데이터베이스를 대상으로 Connection pool을 생성하기 위한 옵션을 설정하는 함수입니다.
+//	# Parameters Description
+//	db (*sqlx.DB): connected database object
+//	isEx (bool): external database or not
+func SetConnectionPoolOptions(db *sqlx.DB, isEx bool) {
 	// Create various
 	var limitConn int
 	var timeout time.Duration
@@ -184,13 +180,10 @@ func setConnectionPoolOptions(db *sqlx.DB, isEx bool) {
 	db.SetMaxIdleConns(limitConn)
 }
 
-/*
- * Get internal database object
- * <IN> connType (string): database type ("internal" or "external")
- * <IN> key (interface{}): external database key
- * <OUT> (model.ConnInfo): database connection information
- * <OUT> (error): error object (contain nil)
- */
+// 생성된 Connection Pool 내에서 Connection을 제공하는 함수입니다. 내부 또는 외부 데이터베이스 여부를 확인하고, 외부 데이터베이스 인 경우 Database의 Key(Source ID)에 맞는 Connection을 제공합니다.
+//	# Parameters Description
+//	connType (string): database type ("internal" or "external")
+//	key (interface{}): external database key
 func GetDatabase(connType string, key interface{}) (model.ConnInfo, error) {
 	// Set default value
 	info := model.ConnInfo{}

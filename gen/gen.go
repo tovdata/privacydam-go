@@ -14,6 +14,7 @@ import (
 	"github.com/tovdata/privacydam-go/core/db"
 )
 
+// Api를 생성하는 함수입니다.
 func GenerateApi(ctx context.Context, api model.Api) error {
 	// Get database object
 	dbInfo, err := db.GetDatabase("internal", nil)
@@ -98,6 +99,7 @@ func GenerateApi(ctx context.Context, api model.Api) error {
 	}
 }
 
+// Api 별칭에 대한 중복을 확인하는 함수입니다.
 func DuplicateCheckForAlias(ctx context.Context, alias string) error {
 	// Get database object
 	dbInfo, err := db.GetDatabase("internal", nil)
@@ -129,6 +131,7 @@ func DuplicateCheckForAlias(ctx context.Context, alias string) error {
 	}
 }
 
+// Source(외부 데이터베이스)를 생성하는 함수입니다.
 func GenerateSource(ctx context.Context, source model.Source) error {
 	// Get database object
 	dbInfo, err := db.GetDatabase("internal", nil)

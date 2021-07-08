@@ -17,12 +17,9 @@ import (
 	"github.com/labstack/echo"
 )
 
-/*
- * Extract access token in request header (attribute or cookie) (for echo framework)
- * <IN> ctx (echo.Context): echo context object
- * <OUT> (string): token value
- * <OUT> (error): error object (contain nil)
- */
+// HTTP 요청 내의 Header로부터 Access Token를 추출하는 함수입니다. (For echo framework)
+//	# Response
+//	(string): extracted access token from HTTP request
 func ExtractAccessTokenOnEcho(ctx echo.Context) (string, error) {
 	// Select request header attribute
 	headerData := ctx.Request().Header.Get("Authorization")
@@ -41,13 +38,12 @@ func ExtractAccessTokenOnEcho(ctx echo.Context) (string, error) {
 	return "", errors.New("Authentication failed (access token not fount)")
 }
 
-/*
- * Extract access token in request header (attribute or cookie) (for aws lambda)
- * <IN> ctx (echo.Context): echo context object
- * <IN> req (events.APIGatewayProxyRequest): apigateway proxy request
- * <OUT> (string): token value
- * <OUT> (error): error object (contain nil)
- */
+// HTTP 요청 내의 Header로부터 Access Token를 추출하는 함수입니다. (For aws lambda)
+//	# Parameters
+//	req (events.APIGatewayProxyRequest): AWS API Gateway proxy request
+//
+//	# Response
+//	(string): extracted access token from HTTP request
 func ExtractAccessTokenOnLambda(ctx context.Context, req events.APIGatewayProxyRequest) (string, error) {
 	// Select request header attribute
 	if value, ok := req.Headers["Authorization"]; ok {
@@ -59,22 +55,19 @@ func ExtractAccessTokenOnLambda(ctx context.Context, req events.APIGatewayProxyR
 	return "", errors.New("Authentication failed (access token not found)")
 }
 
-/*
- * Verify access to generated API
- * <IN> ctx (context.Context): context object
- * <IN> tracking (bool): tracking with AWS X-Ray
- * <IN> server (string): OPA server (contain protocal, host, port)
- * <IN> token (string): token value
- * <OUT> (error): authentication result (nil is a successful authentication)
- */
-func AuthenticateAccess(ctx context.Context, tracking bool, server string, token string) error {
+// API에 대한 접근을 인증하는 함수로써 추출된 Access Token를 OPA server로 전달하고 응답을 받아 API에 대한 접근을 제어합니다.
+//	# Parameters
+//	traking (bool): process tracking status (using AWS X-Ray / need AWS X-Ray configuration)
+//	opaUrl (string): OPA URL [format: <host>:<port>/<path>]
+//	token (string): access token
+func AuthenticateAccess(ctx context.Context, tracking bool, opaUrl string, token string) error {
 	var request *http.Request
 	var err error
 	// Create request object (to OPA server)
 	if tracking {
-		request, err = http.NewRequestWithContext(ctx, "GET", server, nil)
+		request, err = http.NewRequestWithContext(ctx, "GET", opaUrl, nil)
 	} else {
-		request, err = http.NewRequest("GET", server, nil)
+		request, err = http.NewRequest("GET", opaUrl, nil)
 	}
 	// Catch error
 	if err != nil {
