@@ -30,11 +30,9 @@ var (
 	sqsClient *sqs.Client
 )
 
-/*
- * Configurate AWS X-Ray
- * <IN> address (string): X-Ray Deamon address
- * <OUT> (error): error object (contain nil)
- */
+// AWS X-Ray를 사용하기 위해 설정하는 함수입니다.
+//	# Parameters
+//	address (string): ip address on AWS X-Ray daemon [format. <ip>:<port>]
 func ConfigXray(address string) error {
 	return xray.Configure(xray.Config{
 		DaemonAddr:     address,
@@ -42,11 +40,9 @@ func ConfigXray(address string) error {
 	})
 }
 
-/*
- * Configurate tracking
- * <IN> configPath (string): configuration file path
- * <OUT> (error): error object (contain nil)
- */
+// AWS X-Ray를 이용한 추적에 대한 설정 함수입니다.
+//	# Parameters
+//	configPath (string): config file path
 func ConfigTracking(configPath string) error {
 	// Read data
 	rawConfiguration, err := ioutil.ReadFile(configPath)
@@ -74,12 +70,9 @@ func ConfigTracking(configPath string) error {
 	return nil
 }
 
-/*
- * Initialize database (create database connection pool)
- * <IN> ctx (context.Context): context
- * <IN> configPath (string): configuration file path
- * <OUT> (error): error object (contain nil)
- */
+// 내부 또는 외부에서 사용할 데이터베이스의 초기화 작업을 수행하는 함수입니다. 설정 파일 또는 환경 변수에 저장된 설정 값을 이용하여 데이터베이스에 대한 초기화를 진행합니다.
+//	# Parameters
+//	configPath (interface{}): config file path or nil(load config data from process environment various)
 func InitializeDatabase(ctx context.Context, configPath interface{}) error {
 	if reflect.ValueOf(configPath).Kind() == reflect.String {
 		// Load configuration and set environment various
@@ -92,11 +85,9 @@ func InitializeDatabase(ctx context.Context, configPath interface{}) error {
 	return db.Initialization(ctx)
 }
 
-/*
- * Initialize api (set repeat function to get a list of api)
- * <IN> ctx (context.Context): context
- * <IN> minute (int64): repeat period
- */
+// 생성된 API의 정보들을 가져오기 위해 Polling을 설정하는 함수입니다. 지정한 시간마다 Polling을 수행합니다.
+//	# Parameters
+//	minute (int64): repeat period to polling
 func InitializeApi(ctx context.Context, minute int64) {
 	// Init
 	UpdateApiList(ctx, Mutex)
@@ -111,11 +102,9 @@ func InitializeApi(ctx context.Context, minute int64) {
 	}()
 }
 
-/*
- * Update a list of api
- * <IN> ctx (context.Context): context
- * <IN> mutex (*sync.Mutex): mutex object (for sync)
- */
+// 생성된 API의 정보들을 가져오는 함수입니다. 생성된 API의 정보들을 가져와 메모리 상에 캐싱해두는 역할을 수행합니다.
+//	# Parameters
+//	mutex (*sync.Mutex): lock for sync
 func UpdateApiList(ctx context.Context, mutex *sync.Mutex) {
 	// Lock
 	mutex.Lock()
@@ -171,17 +160,9 @@ func loadDatabaseConfiguration(configPath string) error {
 	}
 }
 
-// /*
-//  * Add database connection pool
-//  * <IN> ctx (context.Context): context
-//  * <IN> tracking (bool): tracking with AWS X-Ray
-//  * <IN> source (model.Source): source information object
-//  * <OUT> (error): error object (contain nil)
-//  */
-// func AddDatabaseConnectionPool(ctx context.Context, tracking bool, source model.Source) error {
-// 	return db.CreateConnectionPool(ctx, tracking, source, true)
-// }
-
+// AWS SQS Client를 생성하는 함수입니다. AWS SDK와 환경 변수에 저장된 AWS SQS URL를 이용하여 SQS를 사용할 수 있는 Client를 생성합니다.
+//	# Parameters
+//	region (string): aws region
 func InitializeSQS(ctx context.Context, region string) error {
 	// Create the AWS SQS client
 	createSqsClient(ctx, region)
@@ -203,6 +184,7 @@ func InitializeSQS(ctx context.Context, region string) error {
 	return nil
 }
 
+// 생성된 AWS SQS Client를 제공하는 함수입니다.
 func GetSqsClient() (*sqs.Client, error) {
 	return sqsClient, nil
 }

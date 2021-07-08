@@ -1,3 +1,4 @@
+// PrivacyDAM에 의해 API 생성 과정에서 필요한 함수들 및 생성된 API를 처리하는 함수들이 정의된 패키지
 package process
 
 import (
@@ -6,20 +7,17 @@ import (
 	"errors"
 	"net"
 	"net/http"
-	"os"
 	"regexp"
 	"strconv"
 	"strings"
 	"time"
 
-	"github.com/labstack/echo"
-
 	// AWS
 	"github.com/aws/aws-lambda-go/events"
-	"github.com/aws/aws-sdk-go-v2/aws"
-	"github.com/aws/aws-sdk-go-v2/service/sqs"
-	"github.com/aws/aws-sdk-go-v2/service/sqs/types"
 	"github.com/aws/aws-xray-sdk-go/xray"
+
+	// Echo framework
+	"github.com/labstack/echo"
 
 	// Model
 	"github.com/tovdata/privacydam-go/core/model"
@@ -31,55 +29,17 @@ import (
 	"github.com/tovdata/privacydam-go/process/util/db"
 )
 
-// func ProcessTestInEcho(ctx echo.Context) error {
-// 	// Set context
-// 	cCtx := ctx.Request().Context()
-
-// 	// Get API information
-// 	api, err := GetApiInformation(cCtx, "a_marketing_01")
-// 	if err != nil {
-// 		return res.SendMessage(ctx, "error", err.Error())
-// 	}
-
-// 	// Verify API expires
-// 	if err := VerifyExpires(cCtx, api.ExpDate, api.Status); err != nil {
-// 		return res.SendMessage(ctx, "error", err.Error())
-// 	}
-
-// 	// Get query parameters and verify parameters
-// 	// params := make([]interface{}, 0)
-// 	params := []interface{}{"10"}
-
-// 	didOptions, err := GetDeIdentificationOptions(cCtx, api.Uuid)
-// 	if err != nil {
-// 		return res.SendMessage(ctx, "error", err.Error())
-// 	}
-
-// 	_, err = db.Ex_exportData(cCtx, ctx.Response(), api, params, didOptions)
-// 	if err != nil {
-// 		return res.SendMessage(ctx, "error", err.Error())
-// 	} else {
-// 		return nil
-// 	}
-// }
-
-/*
- * Test connection
- * <IN> ctx (context.Context): context
- * <IN> source (mode.Source): source object
- * <OUT> (error): error object (contain nil)
- */
+// Source(외부 데이터베이스)를 등록하기 전에 연결에 대한 테스트를 수행하는 함수입니다.
 func TestConnection(ctx context.Context, source model.Source) error {
 	return db.Ex_testConnection(ctx, source.Type, source.RealDsn)
 }
 
-/*
- * Extract API alias from request path and verify alias format (on echo framework)
- * <IN> ctx (echo.Context): context
- * <IN> key (string): key to found api alias from request path
- * <OUT> (string): extracted value (= API alias)
- * <OUT> (error): error object (contain nil)
- */
+// HTTP 요청 URL로부터 API 별칭을 추출하는 함수입니다. (For echo framework)
+//	# Parameters
+//	key (string): URL key name (/:<key>)
+//
+//	# Response
+//	(string): extracted value (= API alias)
 func ExtractApiAliasOnEcho(ctx echo.Context, key string) (string, error) {
 	// Extract
 	value := ctx.Param(key)
@@ -92,13 +52,13 @@ func ExtractApiAliasOnEcho(ctx echo.Context, key string) (string, error) {
 	}
 }
 
-/*
- * Extract API alias from request path and verify alias format (on AWS lambda)
- * <IN> ctx (context.Context): context
- * <IN> key (string): key to found api alias from request path
- * <OUT> (string): extracted value (= API alias)
- * <OUT> (error): error object (contain nil)
- */
+// HTTP 요청 URL로부터 API 별칭을 추출하는 함수입니다. (For aws lambda)
+//	# Parameters
+//	request (events.APIGatewayProxyRequest): AWS API Gateway proxy request
+//	key (string): URL key name (/:<key>)
+//
+//	# Response
+//	(string): extracted value (= API alias)
 func ExtractApiAliasOnLambda(ctx context.Context, request events.APIGatewayProxyRequest, key string) (string, error) {
 	// Extract
 	if value, ok := request.PathParameters[key]; ok {
@@ -110,11 +70,7 @@ func ExtractApiAliasOnLambda(ctx context.Context, request events.APIGatewayProxy
 	}
 }
 
-/*
- * Verify API alias format
- * <IN> alias (string): alias value to verify
- * <OUT> (error): error object (contain nil)
- */
+// API 별칭의 형식을 검증하는 함수입니다.
 func VerifyApiAliasFormat(alias string) error {
 	// Verify
 	match, err := regexp.MatchString("^a_+", alias)
@@ -127,13 +83,9 @@ func VerifyApiAliasFormat(alias string) error {
 	}
 }
 
-/*
- * Get API information from internal database
- * <IN> ctx (context.Context): context
- * <IN> param (string): condition to find API (api_alias)
- * <OUT> (model.Api): api information format
- * <OUT> (error): error object (contain nil)
- */
+// 내부 데이터베이스로부터 API의 정보를 가져오는 함수입니다.
+//	# Parameters
+//	param (string): condition to find API (ex. API alias)
 func GetApiInformationFromDB(ctx context.Context, param string) (model.Api, error) {
 	// Get tracking status
 	tracking := util.GetTrackingStatus("processing")
@@ -150,13 +102,9 @@ func GetApiInformationFromDB(ctx context.Context, param string) (model.Api, erro
 	return db.In_findApiFromDB(subCtx, param)
 }
 
-/*
- * Get API information
- * <IN> ctx (context.Context): context
- * <IN> param (string): condition to find API (api_alias)
- * <OUT> (model.Api): api information format
- * <OUT> (error): error object (contain nil)
- */
+// 캐싱된 데이터로부터 API의 정보를 가져오는 함수입니다.
+//	# Parameters
+//	param (string): condition to find API (ex. API alias)
 func GetApiInformation(ctx context.Context, param string) (model.Api, error) {
 	// Get tracking status
 	tracking := util.GetTrackingStatus("processing")
@@ -172,13 +120,10 @@ func GetApiInformation(ctx context.Context, param string) (model.Api, error) {
 	return db.In_findApi(param)
 }
 
-/*
- * Verify API expires
- * <IN> ctx (context.Context): context
- * <IN> date (string): api expiration date (mysql datatime format)
- * <IN> status (string): api activation status ('active' or 'disabled')
- * <OUT> (error): error object (contain nil)
- */
+// API의 만료일을 검증하는 함수입니다.
+//	# Parameters
+//	data (string): API expiration date [format: YYYY-MM-DD HH:mm:ss]
+//	status (string): API activation status ['active' or 'disabled']
 func VerifyExpires(ctx context.Context, date string, status string) error {
 	// Get tracking status
 	tracking := util.GetTrackingStatus("processing")
@@ -199,13 +144,12 @@ func VerifyExpires(ctx context.Context, date string, status string) error {
 	return err
 }
 
-/*
- * Verify API parameters (on echo framework)
- * <IN> ctx (echo.Context): context
- * <IN> keys ([]string): a list of parameter key
- * <OUT> ([]interface{}): a list of parameter value extracted from the request
- * <OUT> (error): error object (contain nil)
- */
+// API의 파라미터 값을 검증하는 함수입니다. API의 파라미터는 Key:Value 형식으로 이루어져 있으며, HTTP 요청에 포함된 파라미터 데이터의 Key값과 API의 파라미터의 Key 값을 비교하여 데이터를 검증하고 추출된 파라미터들을 반환합니다. (For echo framework)
+//	# Parameters
+//	key ([]string): a list of API parameter key
+//
+//	# Response
+//	([]interface{}): a list of parameter value extracted from HTTP request
 func VerifyParametersOnEcho(ctx echo.Context, keys []string) ([]interface{}, error) {
 	// Get tracking status
 	tracking := util.GetTrackingStatus("processing")
@@ -231,14 +175,13 @@ func VerifyParametersOnEcho(ctx echo.Context, keys []string) ([]interface{}, err
 	return params, err
 }
 
-/*
- * Verify API parameters (on AWS lambda)
- * <IN> ctx (context.Context): context
- * <IN> req (events.APIGatewayProxyRequest): request object (for AWS APIGateway proxy, lambda)
- * <IN> keys ([]string): a list of parameter key
- * <OUT> ([]interface{}): a list of parameter value extracted from the request
- * <OUT> (error): error object (contain nil)
- */
+// API의 파라미터 값을 검증하는 함수입니다. API의 파라미터는 Key:Value 형식으로 이루어져 있으며, HTTP 요청에 포함된 파라미터 데이터의 Key값과 API의 파라미터의 Key 값을 비교하여 데이터를 검증하고 추출된 파라미터들을 반환합니다. (For aws lambda)
+//	# Parameters
+//	req (events.APIGatewayProxyRequest): AWS API Gateway proxy request
+//	key ([]string): a list of API parameter key
+//
+//	# Response
+//	([]interface{}): a list of parameter value extracted from HTTP request
 func VerifyParametersOnLambda(ctx context.Context, req events.APIGatewayProxyRequest, keys []string) ([]interface{}, error) {
 	// Get tracking status
 	tracking := util.GetTrackingStatus("processing")
@@ -271,13 +214,9 @@ func verifyParameters(standard []interface{}, target []string) error {
 	}
 }
 
-/*
- * Get a de-identification options from internal database
- * <IN> ctx (context.Context): context
- * <IN> id (string): API id by generated database
- * <OUT> (map[string]model.AnoParamOption): de-identification options
- * <OUT> (error): error object (contain nil)
- */
+// 내부 데이터베이스로부터 API의 비식별 옵션을 가져오는 함수입니다.
+//	# Parameters
+//	id (string): API uuid by generated database
 func GetDeIdentificationOptionsFromDB(ctx context.Context, id string) (map[string]model.AnoParamOption, error) {
 	// Get tracking status
 	tracking := util.GetTrackingStatus("processing")
@@ -314,35 +253,32 @@ func GetDeIdentificationOptionsFromDB(ctx context.Context, id string) (map[strin
  * <OUT> (map[string]model.AnoParamOption): de-identification options
  * <OUT> (error): error object (contain nil)
  */
-func TransformDeIdentificationOptions(ctx context.Context, rawDidOptions string) (map[string]model.AnoParamOption, error) {
-	// Get tracking status
-	tracking := util.GetTrackingStatus("processing")
+// func TransformDeIdentificationOptions(ctx context.Context, rawDidOptions string) (map[string]model.AnoParamOption, error) {
+// 	// Get tracking status
+// 	tracking := util.GetTrackingStatus("processing")
 
-	// [For debug] set subsegment
-	var subSegment *xray.Segment
-	if tracking {
-		_, subSegment = xray.BeginSubsegment(ctx, "Load de-identification options")
-		defer subSegment.Close(nil)
-	}
+// 	// [For debug] set subsegment
+// 	var subSegment *xray.Segment
+// 	if tracking {
+// 		_, subSegment = xray.BeginSubsegment(ctx, "Load de-identification options")
+// 		defer subSegment.Close(nil)
+// 	}
 
-	// Set default de-identification options
-	var didOptions map[string]model.AnoParamOption
-	// Transform to structure
-	if rawDidOptions != "" {
-		err := json.Unmarshal([]byte(rawDidOptions), &didOptions)
-		return didOptions, err
-	} else {
-		return nil, nil
-	}
-}
+// 	// Set default de-identification options
+// 	var didOptions map[string]model.AnoParamOption
+// 	// Transform to structure
+// 	if rawDidOptions != "" {
+// 		err := json.Unmarshal([]byte(rawDidOptions), &didOptions)
+// 		return didOptions, err
+// 	} else {
+// 		return nil, nil
+// 	}
+// }
 
-/*
- * Authenticate access on server (on echo framework)
- * <IN> ctx (echo.Context): context
- * <IN> server (string): OPA server host (contain protocal, host, port)
- * <OUT> (error): authentication result (nil is a successful authentication)
- */
-func AuthenticateAccessOnEcho(ctx echo.Context, server string) error {
+// API 접근에 대한 인증을 하는 함수입니다. HTTP 요청 Header 내에 Token 값을 OPA 서버로 전달하고 인증에 대한 응답을 받아서 처리합니다. (For echo framework)
+//	# Parameters
+//	opaUrl (string): OPA URL [format: <host>:<port>/<path>]
+func AuthenticateAccessOnEcho(ctx echo.Context, opaUrl string) error {
 	// Get tracking status
 	tracking := util.GetTrackingStatus("processing")
 
@@ -360,17 +296,14 @@ func AuthenticateAccessOnEcho(ctx echo.Context, server string) error {
 		return err
 	}
 	// Authenticate access token (using another OPA)
-	return auth.AuthenticateAccess(subCtx, tracking, server, token)
+	return auth.AuthenticateAccess(subCtx, tracking, opaUrl, token)
 }
 
-/*
- * Authenticate access on http (on aws lambda)
- * <IN> ctx (echo.Context): context
- * <IN> req (events.APIGatewayProxyRequest): apigateway proxy request
- * <IN> server (string): OPA server host (contain protocal, host, port)
- * <OUT> (error): authentication result (nil is a successful authentication)
- */
-func AuthenticateAccessOnLambda(ctx context.Context, req events.APIGatewayProxyRequest, server string) error {
+// API 접근에 대한 인증을 하는 함수입니다. HTTP 요청 Header 내에 Token 값을 OPA 서버로 전달하고 인증에 대한 응답을 받아서 처리합니다. (For aws lambda)
+//	# Parameters
+//	req (events.APIGatewayProxyRequest): AWS API Gateway proxy request
+//	opaUrl (string): OPA URL [format: <host>:<port>/<path>]
+func AuthenticateAccessOnLambda(ctx context.Context, req events.APIGatewayProxyRequest, opaUrl string) error {
 	// Get tracking status
 	tracking := util.GetTrackingStatus("processing")
 
@@ -388,14 +321,15 @@ func AuthenticateAccessOnLambda(ctx context.Context, req events.APIGatewayProxyR
 		return err
 	}
 	// Authenticate access token (using another OPA)
-	return auth.AuthenticateAccess(subCtx, tracking, server, token)
+	return auth.AuthenticateAccess(subCtx, tracking, opaUrl, token)
 }
 
-/*
- * Create API name (timestamp)
- * <IN> isTemp (bool): is temparary name?
- * <OUT> (string): api name
- */
+// API Name를 생성하는 함수로써 Timestamp를 이용하여 API의 고유한 이름을 생성합니다.
+//	# Parameters
+//	isTemp (bool): temparary status
+//
+//	# Response
+//	(string): created API name
 func CreateApiName(isTemp bool) string {
 	// Create Api name
 	name := strconv.FormatInt(time.Now().Unix(), 10)
@@ -407,19 +341,13 @@ func CreateApiName(isTemp bool) string {
 	}
 }
 
-/*
- * Export data (process for export API)
- * <IN> ctx (context.Context): context
- * <IN> tracking (bool): tracking with AWS X-Ray
- * <IN> res (http.ResponseWriter): responseWriter object
- * <IN> apiName (string): api name
- * <IN> sourceId (string): api source id by generated database
- * <IN> querySyntax (string) syntax to query
- * <IN> params ([]interface{}): parameters to query
- * <IN> didOptions (map[string]model.AnoParamOption): de-identification options
- * <OUT> (model.Evaluation): k-anonymity evaluation result
- * <OUT> (error): error object (contain nil)
- */
+// 데이터 반출 처리를 수행하는 함수입니다. (For echo framework)
+//	# Parameters
+//	res (http.ResponseWriter): writer for reponse
+//	api (model.Api): API information object for generation
+//
+//	# Response
+//	(model.Evaluation): K-anonymity evaluation result
 func ExportDataOnServer(ctx context.Context, res http.ResponseWriter, api model.Api) (model.Evaluation, error) {
 	// Get routinCount
 	routineCount := core.GetRoutineCount()
@@ -436,19 +364,13 @@ func ExportDataOnServer(ctx context.Context, res http.ResponseWriter, api model.
 	return db.Ex_exportData(ctx, res, routineCount, name, api.SourceId, api.QueryContent.Syntax, api.QueryContent.ParamsValue, api.QueryContent.DidOptions)
 }
 
-/*
- * Export data (process for export API)
- * <IN> ctx (context.Context): context
- * <IN> tracking (bool): tracking with AWS X-Ray
- * <IN> res (http.ResponseWriter): responseWriter object
- * <IN> apiName (string): api name
- * <IN> sourceId (string): api source id by generated database
- * <IN> querySyntax (string) syntax to query
- * <IN> params ([]interface{}): parameters to query
- * <IN> didOptions (map[string]model.AnoParamOption): de-identification options
- * <OUT> (model.Evaluation): k-anonymity evaluation result
- * <OUT> (error): error object (contain nil)
- */
+// 데이터 반출 처리를 수행하는 함수입니다. (For aws lambda)
+//	# Parameters
+//	res (*events.APIGatewayProxyResponse): writer for reponse (AWS API Gateway proxy response)
+//	api (model.Api): API information object for generation
+//
+//	# Response
+//	(model.Evaluation): K-anonymity evaluation result
 func ExportDataOnLambda(ctx context.Context, res *events.APIGatewayProxyResponse, api model.Api) (model.Evaluation, error) {
 	// Get routinCount
 	routineCount := core.GetRoutineCount()
@@ -465,84 +387,18 @@ func ExportDataOnLambda(ctx context.Context, res *events.APIGatewayProxyResponse
 	return db.Ex_exportDataOnLambda(ctx, res, routineCount, name, api.SourceId, api.QueryContent.Syntax, api.QueryContent.ParamsValue, api.QueryContent.DidOptions)
 }
 
-/*
- * Change data (process for control API)
- * <IN> ctx (context.Context): context
- * <IN> sourceId (string): api source id by generated database
- * <IN> querySyntax (string): syntax to query
- * <IN> params ([]interface{}): parameters to query
- * <IN> isTest (bool): test or not
- * <OUT> (int64): affected row count by query
- * <OUT> (error): error object (contain nil)
- */
+// 데이터 수정(Insert, Update, Delete)에 대한 처리를 수행하는 함수입니다.
+//	# Parameters
+//	api (model.Api): API information object for generation
+//	isTest (bool): test or not
+//
+//	# Response
+//	(int64): affected row count by query
 func ChangeData(ctx context.Context, api model.Api, isTest bool) (int64, error) {
 	return db.Ex_changeData(ctx, api.SourceId, api.QueryContent.Syntax, api.QueryContent.ParamsValue, isTest)
 }
 
-// func WriteProcessLogInDB(ctx context.Context, accessor model.Accessor, apiId string, apiType string, evaluation model.Evaluation, finalResult string) error {
-// 	return db.In_writeProcessLog(ctx, accessor, apiId, apiType, evaluation, finalResult)
-// }
-
-func WriteProcessLog(ctx context.Context, accessor model.Accessor, api model.Api, evaluation model.Evaluation, finalResult string) error {
-	// Get sqs url
-	queueUrl := os.Getenv("AWS_SQS_URL")
-
-	// Extract current timestamp
-	timestamp := time.Now().Format("2006-01-02 15:04:05")
-
-	// Get database information
-	dbInfo, err := core.GetExternalDatabase(api.SourceId)
-	if err != nil {
-		return err
-	}
-
-	// Extract parameter values
-	var queryParams string
-	for i, value := range api.QueryContent.ParamsValue {
-		queryParams += value.(string)
-		if i < len(api.QueryContent.ParamsValue)-1 {
-			queryParams += ","
-		}
-	}
-
-	// Set the parameters
-	params := &sqs.SendMessageInput{
-		QueueUrl:       aws.String(queueUrl),
-		MessageGroupId: aws.String("privacydam_process"),
-		MessageBody:    aws.String("processtime: " + timestamp),
-		MessageAttributes: map[string]types.MessageAttributeValue{
-			"timestamp":          createSqsMessageAttributeValue(timestamp),
-			"remote_ip":          createSqsMessageAttributeValue(accessor.Ip),
-			"user_agent":         createSqsMessageAttributeValue(accessor.UserAgent),
-			"dsn":                createSqsMessageAttributeValue(dbInfo.Dsn),
-			"syntax":             createSqsMessageAttributeValue(api.QueryContent.Syntax),
-			"params":             createSqsMessageAttributeValue(queryParams),
-			"k_ano_result_pass":  createSqsMessageAttributeValue(evaluation.Result),
-			"k_ano_result_value": createSqsMessageAttributeValue(strconv.FormatInt(evaluation.Value, 10)),
-			"final_result":       createSqsMessageAttributeValue(finalResult),
-		},
-	}
-
-	// Get sqs client
-	sqsClient, err := core.GetSqsClient()
-	if err != nil {
-		return nil
-	}
-	// Receive message
-	if _, err := sqsClient.SendMessage(ctx, params); err != nil {
-		return err
-	} else {
-		return nil
-	}
-}
-
-func createSqsMessageAttributeValue(value string) types.MessageAttributeValue {
-	return types.MessageAttributeValue{
-		DataType:    aws.String("String"),
-		StringValue: aws.String(value),
-	}
-}
-
+// API에 접근한 사용자의 정보를 추출하는 함수입니다. 접속 IP, UserAgent를 추출합니다.
 func GetAccessorOnServer(ctx echo.Context) model.Accessor {
 	// Define accessor struct
 	var accessor model.Accessor

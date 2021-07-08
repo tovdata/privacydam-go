@@ -9,6 +9,7 @@ import (
 	"github.com/tovdata/privacydam-go/core/model"
 )
 
+// Source(외부 데이터베이스)의 정보에 대한 목록을 제공하는 함수로써 PrivacyDAM Management server에 등록된 Source만을 가져옵니다.
 func In_getDatabaseConnectionList(ctx context.Context) ([]model.Source, error) {
 	// Set array
 	result := make([]model.Source, 0)
@@ -46,6 +47,7 @@ func In_getDatabaseConnectionList(ctx context.Context) ([]model.Source, error) {
 	return result, rows.Err()
 }
 
+// PrivacyDAM에 의해 생성된 API의 정보에 대한 목록을 제공하는 함수입니다.
 func In_getApiList(ctx context.Context) ([]model.Api, error) {
 	// Set array
 	result := make([]model.Api, 0)

@@ -1,3 +1,4 @@
+// PrivacyDAM에 생성된 API를 실질적으로 처리하기 위한 패키지
 package db
 
 import (
@@ -26,6 +27,10 @@ import (
 	"github.com/tovdata/privacydam-go/process/util/kAno"
 )
 
+// 외부 데이터베이스와의 Connection을 테스트하는 함수입니다.
+//	# Parameters
+//	driverName (string): database driver name (ex. mysql, hdb ...)
+//	dsn (string): database source name
 func Ex_testConnection(ctx context.Context, driverName string, dsn string) error {
 	// Create database object
 	db, err := sql.Open(driverName, dsn)
@@ -38,6 +43,14 @@ func Ex_testConnection(ctx context.Context, driverName string, dsn string) error
 	return db.Ping()
 }
 
+// 데이터 수정(Insert, Update, Delete)에 대한 처리를 수행하는 함수입니다.
+//	# Parameters
+//	sourceId (string): source uuid by generated database
+//	params ([]interface): API parameter values
+//	isTest (bool): test or not
+//
+//	# Response
+//	(int64): affected row count by query
 func Ex_changeData(ctx context.Context, sourceId string, querySyntax string, params []interface{}, isTest bool) (int64, error) {
 	// Get tracking status
 	tracking := util.GetTrackingStatus("processing")
@@ -97,6 +110,18 @@ func Ex_changeData(ctx context.Context, sourceId string, querySyntax string, par
 	}
 }
 
+// 데이터 반출 처리를 수행하는 함수입니다. (For echo framework)
+//	# Parameters
+//	res (http.ResponseWriter): writer for response
+//	routineCount (int): go-routine count
+//	apiName (string): API alias
+//	sourceId (string): source uuid by generated database
+//	querySyntax (string): syntax to query
+//	params ([]interface): API parameter values
+//	didOptions (map[string]model.AnoParamOption): de-identification option by column
+//
+//	# Response
+//	(model.Evaluation): K-anonymity evaluation result
 func Ex_exportData(ctx context.Context, res http.ResponseWriter, routineCount int, apiName string, sourceId string, querySyntax string, params []interface{}, didOptions map[string]model.AnoParamOption) (model.Evaluation, error) {
 	// Get tracking status
 	tracking := util.GetTrackingStatus("processing")
@@ -221,6 +246,18 @@ func Ex_exportData(ctx context.Context, res http.ResponseWriter, routineCount in
 	}
 }
 
+// 데이터 반출 처리를 수행하는 함수입니다. (For aws lambda)
+//	# Parameters
+//	res (http.ResponseWriter): writer for response (AWS API Gateway proxy response)
+//	routineCount (int): go-routine count
+//	apiName (string): API alias
+//	sourceId (string): source uuid by generated database
+//	querySyntax (string): syntax to query
+//	params ([]interface): API parameter values
+//	didOptions (map[string]model.AnoParamOption): de-identification option by column
+//
+//	# Response
+//	(model.Evaluation): K-anonymity evaluation result
 func Ex_exportDataOnLambda(ctx context.Context, res *events.APIGatewayProxyResponse, routineCount int, apiName string, sourceId string, querySyntax string, params []interface{}, didOptions map[string]model.AnoParamOption) (model.Evaluation, error) {
 	// Get tracking status
 	tracking := util.GetTrackingStatus("processing")
@@ -368,26 +405,6 @@ func checkAnoEvaluationCondition(didOptions map[string]model.AnoParamOption) boo
 	}
 }
 
-// func sql_queryResultColumns(ctx context.Context, dbKey string, querySyntax string, params []interface{}) ([]*sql.ColumnType, error) {
-// 	// Modify query syntax
-// 	var buffer bytes.Buffer
-// 	switch gExDB[dbKey].Type {
-// 	case "mysql", "hdb":
-// 		buffer.WriteString("SELECT * FROM (")
-// 		buffer.WriteString(querySyntax)
-// 		buffer.WriteString(") AS subQueryForColumns LIMIT 1")
-// 	}
-
-// 	// Execute query
-// 	rows, err := gExDB[dbKey].Instance.QueryContext(ctx, buffer.String(), params...)
-// 	if err != nil {
-// 		return nil, err
-// 	}
-// 	defer rows.Close()
-// 	// Extract columns and return columns
-// 	return rows.ColumnTypes()
-// }
-
 func executeExportQuery(ctx context.Context, tracking bool, columnTypes []*sql.ColumnType, rows *sql.Rows, iDataQueue chan<- []interface{}, quitQuery chan<- bool) {
 	// [For debug] Set the subsegment
 	if tracking {
@@ -441,7 +458,7 @@ func processDeIdentification(ctx context.Context, tracking bool, options map[str
 	}
 
 	// build processing functions
-	funcList := [](func(string) string){}
+	funcList := make([](func(string) string), len(columns))
 	passAsIs := func(inString string) string {
 		return inString
 	}
@@ -449,34 +466,34 @@ func processDeIdentification(ctx context.Context, tracking bool, options map[str
 		return ""
 	}
 
-	for _, key := range columns {
+	for i, key := range columns {
 		if option, exists := options[key]; exists == true {
 			switch option.Method {
 			case "encryption":
-				funcList = append(funcList, did.BuildEncryptingFunc(option.Options))
+				funcList[i] = did.BuildEncryptingFunc(option.Options)
 			case "rounding":
-				funcList = append(funcList, did.BuildRoundingFunc(option.Options))
+				funcList[i] = did.BuildRoundingFunc(option.Options)
 			case "data_range":
-				funcList = append(funcList, did.BuildRangingFunc(option.Options))
+				funcList[i] = did.BuildRangingFunc(option.Options)
 			case "blank_impute":
-				funcList = append(funcList, did.BuildMaskingFunc(option.Options))
+				funcList[i] = did.BuildMaskingFunc(option.Options)
 			case "pii_reduction":
-				funcList = append(funcList, did.BuildMaskingFunc(option.Options))
+				funcList[i] = did.BuildMaskingFunc(option.Options)
 			case "non":
-				funcList = append(funcList, passAsIs)
+				funcList[i] = passAsIs
 			default:
-				funcList = append(funcList, dropAll)
+				funcList[i] = dropAll
 			}
 		} else {
-			funcList = append(funcList, passAsIs)
+			funcList[i] = passAsIs
 		}
 	}
 
 	cnt := 0
 	for v, ok := <-tDataQueue; ok; v, ok = <-tDataQueue {
-		output := []string{}
+		output := make([]string, len(columns))
 		for i, value := range v {
-			output = append(output, funcList[i](value))
+			output[i] = funcList[i](value)
 		}
 		aDataQueue <- output
 		cnt++

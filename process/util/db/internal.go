@@ -17,6 +17,9 @@ import (
 	coreDB "github.com/tovdata/privacydam-go/core/db"
 )
 
+// 내부 데이터베이스로부터 API의 정보를 가져오는 함수입니다.
+//	# Parameters
+//	param (string): value to find API (= API alias)
 func In_findApiFromDB(ctx context.Context, param string) (model.Api, error) {
 	// Create api structure
 	info := model.Api{
@@ -68,6 +71,9 @@ func In_findApiFromDB(ctx context.Context, param string) (model.Api, error) {
 	return info, err
 }
 
+// 내부 데이터베이스로부터 API의 비식별 옵션(Raw data)을 가져오는 함수입니다.
+//	# Parameters
+//	id (string): API uuid by generated database
 func In_getDeIdentificationOptionsFromDB(ctx context.Context, id string) (string, error) {
 	// Set default return value
 	var options string
@@ -103,6 +109,9 @@ func In_getDeIdentificationOptionsFromDB(ctx context.Context, id string) (string
 	return options, rows.Err()
 }
 
+// 캐싱된 API 목록으로부터 API의 정보를 가져오는 함수입니다.
+//	# Parameters
+//	param (string): value to find API (= API alias)
 func In_findApi(param string) (model.Api, error) {
 	// Lock
 	core.Mutex.Lock()
@@ -119,38 +128,38 @@ func In_findApi(param string) (model.Api, error) {
 	}
 }
 
-func In_writeProcessLog(ctx context.Context, accessor model.Accessor, apiId string, apiType string, evaluation model.Evaluation, finalResult string) error {
-	// Get database object
-	dbInfo, err := coreDB.GetDatabase("internal", nil)
-	if err != nil {
-		return err
-	}
+// func In_writeProcessLog(ctx context.Context, accessor model.Accessor, apiId string, apiType string, evaluation model.Evaluation, finalResult string) error {
+// 	// Get database object
+// 	dbInfo, err := coreDB.GetDatabase("internal", nil)
+// 	if err != nil {
+// 		return err
+// 	}
 
-	// Execute query (write process log)
-	if apiType == "export" {
-		querySyntax := `INSERT INTO process_log (api_id, remote_ip, user_agent, k_ano_result_pass, k_ano_result_value, final_result) VALUE (?, ?, ?, ?, ?, ?)`
-		if dbInfo.Tracking {
-			if _, err := dbInfo.Instance.ExecContext(ctx, querySyntax, apiId, accessor.Ip, accessor.UserAgent, evaluation.Result, evaluation.Value, finalResult); err != nil {
-				return err
-			}
-		} else {
-			if _, err := dbInfo.Instance.Exec(querySyntax, apiId, accessor.Ip, accessor.UserAgent, evaluation.Result, evaluation.Value, finalResult); err != nil {
-				return err
-			}
-		}
-	} else if apiType == "control" {
-		querySyntax := `INSERT INTO process_log (api_id, remote_ip, user_agent, final_result) VALUE (?, ?, ?, ?)`
-		if dbInfo.Tracking {
-			if _, err := dbInfo.Instance.ExecContext(ctx, querySyntax, apiId, accessor.Ip, accessor.UserAgent, finalResult); err != nil {
-				return err
-			}
-		} else {
-			if _, err := dbInfo.Instance.Exec(querySyntax, apiId, accessor.Ip, accessor.UserAgent, finalResult); err != nil {
-				return err
-			}
-		}
-	} else {
-		return errors.New("Invalid API type")
-	}
-	return nil
-}
+// 	// Execute query (write process log)
+// 	if apiType == "export" {
+// 		querySyntax := `INSERT INTO process_log (api_id, remote_ip, user_agent, k_ano_result_pass, k_ano_result_value, final_result) VALUE (?, ?, ?, ?, ?, ?)`
+// 		if dbInfo.Tracking {
+// 			if _, err := dbInfo.Instance.ExecContext(ctx, querySyntax, apiId, accessor.Ip, accessor.UserAgent, evaluation.Result, evaluation.Value, finalResult); err != nil {
+// 				return err
+// 			}
+// 		} else {
+// 			if _, err := dbInfo.Instance.Exec(querySyntax, apiId, accessor.Ip, accessor.UserAgent, evaluation.Result, evaluation.Value, finalResult); err != nil {
+// 				return err
+// 			}
+// 		}
+// 	} else if apiType == "control" {
+// 		querySyntax := `INSERT INTO process_log (api_id, remote_ip, user_agent, final_result) VALUE (?, ?, ?, ?)`
+// 		if dbInfo.Tracking {
+// 			if _, err := dbInfo.Instance.ExecContext(ctx, querySyntax, apiId, accessor.Ip, accessor.UserAgent, finalResult); err != nil {
+// 				return err
+// 			}
+// 		} else {
+// 			if _, err := dbInfo.Instance.Exec(querySyntax, apiId, accessor.Ip, accessor.UserAgent, finalResult); err != nil {
+// 				return err
+// 			}
+// 		}
+// 	} else {
+// 		return errors.New("Invalid API type")
+// 	}
+// 	return nil
+// }

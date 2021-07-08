@@ -6,6 +6,7 @@ import (
 	"strconv"
 )
 
+// AWS X-Ray를 이용한 추적 여부를 확인하는 함수입니다.
 func GetTrackingStatus(srcType string) bool {
 	var statusText string
 	// Get a status by source type

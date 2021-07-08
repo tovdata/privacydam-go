@@ -6,14 +6,12 @@ import (
 	"github.com/jmoiron/sqlx"
 )
 
-/* For authentication and acceess logging */
-// Accessor information format for access logging
+// Accessor information format to write access log
 type Accessor struct {
 	Ip        string `json:"ip"`
 	UserAgent string `json:"agent"`
 }
 
-/* DDL Process */
 // External database simple information and connection object for connection pool
 type ConnInfo struct {
 	Category string   `json:"category"`
@@ -63,7 +61,6 @@ type Evaluation struct {
 	Value   int64  `json:"value"`
 }
 
-/* De-identification Process */
 // AnoOption defines the specific anonymization option parameter format
 type AnoOption struct {
 	Fore       string `json:"fore,omitempty"`
@@ -87,4 +84,24 @@ type AnoParamOption struct {
 	Options     AnoOption `json:"options"`
 	Level       int       `json:"level"`
 	Description string    `json:"description"`
+}
+
+// Processed log format
+type Processed struct {
+	ApiAlias  string          `json:"apiName"`
+	DateTime  string          `json:"datetime"`
+	Message   string          `json:"message"`
+	Result    string          `json:"result"`
+	RemoteIp  string          `json:"remoteIp"`
+	UserAgent string          `json:"userAgent"`
+	Detail    ProcessedDetail `json:"processedInfo"`
+}
+
+// Processed detail format
+type ProcessedDetail struct {
+	Dsn       string `json:"dsn"`
+	KAnoPass  string `json:"kAnoPass"`
+	KAnoValue string `json:"kAnoValue"` // string of int format
+	Params    string `json:"params"`    // string of array format
+	Syntax    string `json:"syntax"`
 }
