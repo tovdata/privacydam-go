@@ -1,3 +1,4 @@
+// 로그 출력 및 작성을 처리하는 패키지
 package logger
 
 import (

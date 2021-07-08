@@ -1,3 +1,4 @@
+// 각종 데이터 구조체들을 정의한 패키지
 package model
 
 import (

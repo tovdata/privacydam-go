@@ -1,3 +1,4 @@
+// PrivacyDAM에서 사용할 API와 Source를 생성하는 패키지
 package gen
 
 import (
