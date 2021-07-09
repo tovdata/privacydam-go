@@ -9,6 +9,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"reflect"
 	"strconv"
 	"strings"
 	"time"
@@ -152,7 +153,7 @@ func Ex_exportData(ctx context.Context, res http.ResponseWriter, routineCount in
 	nTransProc := uint64(routineCount)
 	nAnonyProc := uint64(routineCount)
 	// Create channel(data queue) for go-routine
-	iDataQueue := make(chan []interface{}, queueSize)
+	iDataQueue := make(chan map[string]interface{}, queueSize)
 	tDataQueue := make(chan []string, queueSize)
 	aDataQueue := make(chan []string, queueSize)
 	// Create channel(process queue) for go-routine
@@ -185,20 +186,20 @@ func Ex_exportData(ctx context.Context, res http.ResponseWriter, routineCount in
 	}
 
 	// Extract column types and column names
-	columnTypes, err := rows.ColumnTypes()
-	if err != nil {
-		return evaluation, err
-	}
+	// columnTypes, err := rows.ColumnTypes()
+	// if err != nil {
+	// 	return evaluation, err
+	// }
 	columns, err := rows.Columns()
 	if err != nil {
 		return evaluation, err
 	}
 
 	// Extract query result
-	go executeExportQuery(subCtx, tracking, rows, columnTypes, iDataQueue, quitQuery)
+	go executeExportQuery(subCtx, tracking, rows, iDataQueue, quitQuery)
 	// Transform query result to string
 	for i := uint64(0); i < nTransProc; i++ {
-		go transformQueryResult(subCtx, tracking, columnTypes, iDataQueue, tDataQueue, quitTrans)
+		go transformQueryResult(subCtx, tracking, columns, iDataQueue, tDataQueue, quitTrans)
 	}
 	// Process de-identification
 	for i := uint64(0); i < nAnonyProc; i++ {
@@ -291,7 +292,7 @@ func Ex_exportDataOnLambda(ctx context.Context, res *events.APIGatewayProxyRespo
 	nTransProc := uint64(routineCount)
 	nAnonyProc := uint64(routineCount)
 	// Create channel(data queue) for go-routine
-	iDataQueue := make(chan []interface{}, queueSize)
+	iDataQueue := make(chan map[string]interface{}, queueSize)
 	tDataQueue := make(chan []string, queueSize)
 	aDataQueue := make(chan []string, queueSize)
 	// Create channel(process queue) for go-routine
@@ -321,20 +322,20 @@ func Ex_exportDataOnLambda(ctx context.Context, res *events.APIGatewayProxyRespo
 	}
 
 	// Extract column types and column names
-	columnTypes, err := rows.ColumnTypes()
-	if err != nil {
-		return evaluation, err
-	}
+	// columnTypes, err := rows.ColumnTypes()
+	// if err != nil {
+	// 	return evaluation, err
+	// }
 	columns, err := rows.Columns()
 	if err != nil {
 		return evaluation, err
 	}
 
 	// Extract query result
-	go executeExportQuery(subCtx, tracking, rows, columnTypes, iDataQueue, quitQuery)
+	go executeExportQuery(subCtx, tracking, rows, iDataQueue, quitQuery)
 	// Transform query result to string
 	for i := uint64(0); i < nTransProc; i++ {
-		go transformQueryResult(subCtx, tracking, columnTypes, iDataQueue, tDataQueue, quitTrans)
+		go transformQueryResult(subCtx, tracking, columns, iDataQueue, tDataQueue, quitTrans)
 	}
 	// Process de-identification
 	for i := uint64(0); i < nAnonyProc; i++ {
@@ -409,7 +410,7 @@ func checkAnoEvaluationCondition(didOptions map[string]model.AnoParamOption) boo
 	}
 }
 
-func executeExportQuery(ctx context.Context, tracking bool, rows *sqlx.Rows, columnTypes []*sql.ColumnType, iDataQueue chan<- []interface{}, quitQuery chan<- bool) {
+func executeExportQuery(ctx context.Context, tracking bool, rows *sqlx.Rows, iDataQueue chan<- map[string]interface{}, quitQuery chan<- bool) {
 	// [For debug] Set the subsegment
 	if tracking {
 		_, subSegment := xray.BeginSubsegment(ctx, "Export data")
@@ -419,9 +420,13 @@ func executeExportQuery(ctx context.Context, tracking bool, rows *sqlx.Rows, col
 
 	// Extract query result
 	for rows.Next() {
-		allocated := allocateMemoryByScanType(columnTypes)
-		// Scan and store
-		rows.Scan(allocated...)
+		// allocated := allocateMemoryByScanType(columnTypes)
+		// // Scan and store
+		// rows.Scan(allocated...)
+
+		allocated := make(map[string]interface{})
+		rows.MapScan(allocated)
+
 		iDataQueue <- allocated
 	}
 	// Catch error
@@ -433,7 +438,7 @@ func executeExportQuery(ctx context.Context, tracking bool, rows *sqlx.Rows, col
 	}
 }
 
-func transformQueryResult(ctx context.Context, tracking bool, columnTypes []*sql.ColumnType, iDataQueue <-chan []interface{}, tDataQueue chan<- []string, procQueue chan<- bool) {
+func transformQueryResult(ctx context.Context, tracking bool, columns []string, iDataQueue <-chan map[string]interface{}, tDataQueue chan<- []string, procQueue chan<- bool) {
 	// [For debug] Set the subsegment
 	if tracking {
 		_, subSegment := xray.BeginSubsegment(ctx, "Process transformation")
@@ -441,14 +446,18 @@ func transformQueryResult(ctx context.Context, tracking bool, columnTypes []*sql
 	}
 
 	for v, ok := <-iDataQueue; ok; v, ok = <-iDataQueue {
-		converted := make([]string, len(columnTypes))
-		for i, column := range v {
-			if columnTypes[i].ScanType() == nil {
-				converted[i] = transformToString("string", column)
-			} else {
-				converted[i] = transformToString(columnTypes[i].ScanType().String(), column)
-			}
+		converted := make([]string, len(columns))
+		// for i, column := range v {
+		// 	if columnTypes[i].ScanType() == nil {
+		// 		converted[i] = transformToString("string", column)
+		// 	} else {
+		// 		converted[i] = transformToString(columnTypes[i].ScanType().String(), column)
+		// 	}
+		// }
+		for i, key := range columns {
+			converted[i] = transformToString(reflect.ValueOf(v[key]).Kind().String(), v[key])
 		}
+
 		tDataQueue <- converted
 	}
 	procQueue <- true
@@ -617,54 +626,57 @@ func writeExportedDataOnLambda(ctx context.Context, tracking bool, res *events.A
 	evaluater = nil
 }
 
-func allocateMemoryByScanType(columns []*sql.ColumnType) []interface{} {
-	allocated := make([]interface{}, len(columns))
-	for i, column := range columns {
-		if column.ScanType() == nil {
-			allocated[i] = new(string)
-		} else {
-			switch column.ScanType().String() {
-			case "int", "int8", "int16", "int32", "int64":
-				allocated[i] = new(int64)
-			case "uint", "uint8", "uint16", "uint32", "uint64":
-				allocated[i] = new(uint64)
-			case "float32", "float64":
-				allocated[i] = new(float64)
-			case "bool":
-				allocated[i] = new(bool)
-			case "string":
-				allocated[i] = new(string)
-			case "time.time":
-				allocated[i] = new(time.Time)
-			case "sql.RawBytes":
-				allocated[i] = new([]byte)
-			// case "driver.Decimal":
-			//  temp[i] = new(driver.Decimal)
-			default:
-				//  log.Print("New type: ", column.ScanType().String())
-				allocated[i] = new(interface{})
-			}
-		}
-	}
-	return allocated
-}
+// func allocateMemoryByScanType(columns []*sql.ColumnType) []interface{} {
+// 	allocated := make([]interface{}, len(columns))
+// 	for i, column := range columns {
+// 		if column.ScanType() == nil {
+// 			allocated[i] = new(string)
+// 		} else {
+// 			switch column.ScanType().String() {
+// 			case "int", "int8", "int16", "int32", "int64":
+// 				allocated[i] = new(int64)
+// 			case "uint", "uint8", "uint16", "uint32", "uint64":
+// 				allocated[i] = new(uint64)
+// 			case "float32", "float64":
+// 				allocated[i] = new(float64)
+// 			case "bool":
+// 				allocated[i] = new(bool)
+// 			case "string":
+// 				allocated[i] = new(string)
+// 			case "time.time":
+// 				allocated[i] = new(time.Time)
+// 			case "sql.RawBytes", "slice":
+// 				allocated[i] = new([]byte)
+// 			// case "driver.Decimal":
+// 			//  temp[i] = new(driver.Decimal)
+// 			default:
+// 				//  log.Print("New type: ", column.ScanType().String())
+// 				allocated[i] = new(interface{})
+// 			}
+// 		}
+// 	}
+// 	return allocated
+// }
+
 func transformToString(scanType string, elem interface{}) string {
 	var converted string
 	switch scanType {
 	case "int", "int8", "int16", "int32", "int64":
-		converted = strconv.FormatInt(*elem.(*int64), 10)
-	case "uint", "uint8", "uint16", "uint32", "uint64":
-		converted = strconv.FormatUint(*elem.(*uint64), 10)
+		converted = strconv.FormatInt(elem.(int64), 10)
+	case "uint", "uint8", "uint16", "uint32", "uint64", "uintptr":
+		converted = strconv.FormatUint(elem.(uint64), 10)
 	case "float32", "float64":
-		converted = strconv.FormatFloat(*elem.(*float64), 'f', -6, 64)
+		converted = strconv.FormatFloat(elem.(float64), 'f', -6, 64)
+	// case "complex32", "complex64", "complex128":
+	// 	converted = strconv.FormatComplex(elem.(complex128), [])
 	case "bool":
-		converted = strconv.FormatBool(*elem.(*bool))
+		converted = strconv.FormatBool(elem.(bool))
 	case "string":
-		converted = (*elem.(*string))
+		converted = (elem.(string))
 	case "time.time":
-		converted = (elem.(*time.Time).Format("2006-01-02T15:04:05"))
-	case "sql.RawBytes":
-		converted = string(*elem.(*[]byte))
+		converted = (elem.(time.Time).Format("2006-01-02T15:04:05"))
+	case "sql.RawBytes", "slice":
+		converted = string(elem.([]byte))
 	// case "driver.Decimal":
 	//  converted[i] = big.NewFloat(0).SetRat((*big.Rat)(elem.(*driver.Decimal))).String()
 	default:
