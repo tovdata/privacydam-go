@@ -16,6 +16,7 @@ import (
 	// AWS
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/aws/aws-xray-sdk-go/xray"
+	"github.com/jmoiron/sqlx"
 
 	// Model
 	"github.com/tovdata/privacydam-go/core/model"
@@ -163,17 +164,20 @@ func Ex_exportData(ctx context.Context, res http.ResponseWriter, routineCount in
 		subSegment.Close(nil)
 	}
 
+	// cc := runtime.GOMAXPROCS(1)
+	// fmt.Println("Core count: " + strconv.FormatInt(int64(cc), 10))
+
 	// [For debug] Set the subsegment
 	if tracking {
 		subCtx, subSegment = xray.BeginSubsegment(ctx, "Process export")
 	}
 	/* Processing part */
 	// Execute query
-	var rows *sql.Rows
+	var rows *sqlx.Rows
 	if dbInfo.Tracking {
-		rows, err = dbInfo.Instance.QueryContext(subCtx, querySyntax, params...)
+		rows, err = dbInfo.Instance.QueryxContext(subCtx, querySyntax, params...)
 	} else {
-		rows, err = dbInfo.Instance.Query(querySyntax, params...)
+		rows, err = dbInfo.Instance.Queryx(querySyntax, params...)
 	}
 	// Catch error
 	if err != nil {
@@ -191,7 +195,7 @@ func Ex_exportData(ctx context.Context, res http.ResponseWriter, routineCount in
 	}
 
 	// Extract query result
-	go executeExportQuery(subCtx, tracking, columnTypes, rows, iDataQueue, quitQuery)
+	go executeExportQuery(subCtx, tracking, rows, columnTypes, iDataQueue, quitQuery)
 	// Transform query result to string
 	for i := uint64(0); i < nTransProc; i++ {
 		go transformQueryResult(subCtx, tracking, columnTypes, iDataQueue, tDataQueue, quitTrans)
@@ -305,11 +309,11 @@ func Ex_exportDataOnLambda(ctx context.Context, res *events.APIGatewayProxyRespo
 	}
 	/* Processing part */
 	// Execute query
-	var rows *sql.Rows
+	var rows *sqlx.Rows
 	if dbInfo.Tracking {
-		rows, err = dbInfo.Instance.QueryContext(subCtx, querySyntax, params...)
+		rows, err = dbInfo.Instance.QueryxContext(subCtx, querySyntax, params...)
 	} else {
-		rows, err = dbInfo.Instance.Query(querySyntax, params...)
+		rows, err = dbInfo.Instance.Queryx(querySyntax, params...)
 	}
 	// Catch error
 	if err != nil {
@@ -327,7 +331,7 @@ func Ex_exportDataOnLambda(ctx context.Context, res *events.APIGatewayProxyRespo
 	}
 
 	// Extract query result
-	go executeExportQuery(subCtx, tracking, columnTypes, rows, iDataQueue, quitQuery)
+	go executeExportQuery(subCtx, tracking, rows, columnTypes, iDataQueue, quitQuery)
 	// Transform query result to string
 	for i := uint64(0); i < nTransProc; i++ {
 		go transformQueryResult(subCtx, tracking, columnTypes, iDataQueue, tDataQueue, quitTrans)
@@ -405,7 +409,7 @@ func checkAnoEvaluationCondition(didOptions map[string]model.AnoParamOption) boo
 	}
 }
 
-func executeExportQuery(ctx context.Context, tracking bool, columnTypes []*sql.ColumnType, rows *sql.Rows, iDataQueue chan<- []interface{}, quitQuery chan<- bool) {
+func executeExportQuery(ctx context.Context, tracking bool, rows *sqlx.Rows, columnTypes []*sql.ColumnType, iDataQueue chan<- []interface{}, quitQuery chan<- bool) {
 	// [For debug] Set the subsegment
 	if tracking {
 		_, subSegment := xray.BeginSubsegment(ctx, "Export data")
@@ -528,7 +532,6 @@ func writeExportedData(ctx context.Context, tracking bool, res http.ResponseWrit
 	}
 
 	// Transform header data to csv format
-	lineCount := int64(0)
 	buffer := transformToCsvFormat(header)
 	res.Write(buffer.Bytes())
 	// Export process
@@ -541,13 +544,7 @@ func writeExportedData(ctx context.Context, tracking bool, res http.ResponseWrit
 		buffer.Reset()
 		buffer = transformToCsvFormat(row)
 		res.Write(buffer.Bytes())
-		lineCount++
 	}
-	// Debug logging status
-	buffer.Reset()
-	buffer.WriteString("Write complete: ")
-	buffer.WriteString(strconv.FormatInt(lineCount, 10))
-	buffer.WriteString("lines.")
 
 	// Evaluate k-anonymity
 	evaluation := model.Evaluation{
@@ -602,12 +599,6 @@ func writeExportedDataOnLambda(ctx context.Context, tracking bool, res *events.A
 	// Write response body
 	res.Body = body.String()
 	body.Reset()
-
-	// Debug logging status
-	buffer.Reset()
-	buffer.WriteString("Write complete: ")
-	buffer.WriteString(strconv.FormatInt(lineCount, 10))
-	buffer.WriteString("lines.")
 
 	// Evaluate k-anonymity
 	evaluation := model.Evaluation{

@@ -47,6 +47,27 @@ func PrintMessage(logType string, message string) {
 	log.Println(buffer.String())
 }
 
+// API 처리 로그를 작성하는 함수입니다.
+//	# Parameters
+//	accessor (model.Accessor): accessor information object
+//	api (model.Api): api information object
+//	evaluation (model.Evaluation): k-anonymity evaluation result
+//	result (string): processing result
+func WriteProcessedResult(accessor model.Accessor, api model.Api, evaluation model.Evaluation, result string) {
+	// Create processed format
+	processed, err := CreateProcessedFormat(accessor, api, evaluation, result)
+	if err != nil {
+		PrintMessage("error", err.Error())
+		return
+	}
+
+	// Send message
+	if err := SendProcessedResult(processed); err != nil {
+		PrintMessage("error", err.Error())
+		return
+	}
+}
+
 // API 처리 객체를 생성하는 함수입니다. API를 처리한 데이터를 이용하여 로그 작성을 위한 데이터 형식을 생성합니다.
 //	# Parameters
 //	accessor (model.Accessor): accessor information object
@@ -94,19 +115,15 @@ func CreateProcessedFormat(accessor model.Accessor, api model.Api, evaluation mo
 	return params, nil
 }
 
-// API 처리 로그를 작성하는 함수입니다. 처리된 데이터를 정리하여 메시지 형식을 갖추고 AWS SQS에 메시지를 전송합니다.
-func WriteProcessedResult(processed model.Processed) {
+// API 처리 로그 메시지를 생성하고 SQS로 전송하는 함수입니다. createProcessedMessage()를 호출하여 SQS SendMessage를 생성하고, SendMessage()를 호출하여 메시지를 SQS로 전송합니다.
+func SendProcessedResult(processed model.Processed) error {
 	// Create message
 	message, err := createProcessedMessage(processed)
 	if err != nil {
-		PrintMessage("error", err.Error())
-		return
+		return err
 	}
 	// Send message
-	if err := SendMessage(message); err != nil {
-		PrintMessage("error", err.Error())
-		return
-	}
+	return SendMessage(message)
 }
 
 /*

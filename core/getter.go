@@ -47,6 +47,9 @@ func TransformToDidOptions(rawOptions string) (map[string]model.AnoParamOption, 
 	// Set default de-identification options
 	var didOptions map[string]model.AnoParamOption
 	// Transform to structure
+	if rawOptions == "" {
+		return didOptions, nil
+	}
 	if err := json.Unmarshal([]byte(rawOptions), &didOptions); err != nil {
 		return didOptions, err
 	} else {
@@ -74,11 +77,12 @@ func GetApiList() map[string]model.Api {
 // Go-routine이 동작할 Core 개수를 설정하는 함수입니다.
 func SetRoutineCount() {
 	// Set default go-routine count (min count: 4)
-	RoutineCount = runtime.NumCPU()
+	cpuCore := runtime.NumCPU()
+	RoutineCount = cpuCore
 	if RoutineCount < 4 {
 		RoutineCount = 4
 	}
-	runtime.GOMAXPROCS(RoutineCount)
+	runtime.GOMAXPROCS(cpuCore)
 }
 
 // Go-routine이 동작할 Core 개수를 반환하는 함수입니다.
