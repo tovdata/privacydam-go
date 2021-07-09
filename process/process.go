@@ -253,27 +253,24 @@ func GetDeIdentificationOptionsFromDB(ctx context.Context, id string) (map[strin
  * <OUT> (map[string]model.AnoParamOption): de-identification options
  * <OUT> (error): error object (contain nil)
  */
-// func TransformDeIdentificationOptions(ctx context.Context, rawDidOptions string) (map[string]model.AnoParamOption, error) {
-// 	// Get tracking status
-// 	tracking := util.GetTrackingStatus("processing")
 
-// 	// [For debug] set subsegment
-// 	var subSegment *xray.Segment
-// 	if tracking {
-// 		_, subSegment = xray.BeginSubsegment(ctx, "Load de-identification options")
-// 		defer subSegment.Close(nil)
-// 	}
+// AnoParamOption 형태(JSON)의 문자열 데이터를 map 형태로 변환하는 함수입니다. 문자열로 저장되어 있는 비식별 옵션 데이터를 map으로 변환하여 사용하기 위해서 호출됩니다.
+//	# Parameters
+//	rawDidOptions (string): string of JSON format
+func TransformDeIdentificationOptions(ctx context.Context, rawDidOptions string) (map[string]model.AnoParamOption, error) {
+	// Get tracking status
+	tracking := util.GetTrackingStatus("processing")
 
-// 	// Set default de-identification options
-// 	var didOptions map[string]model.AnoParamOption
-// 	// Transform to structure
-// 	if rawDidOptions != "" {
-// 		err := json.Unmarshal([]byte(rawDidOptions), &didOptions)
-// 		return didOptions, err
-// 	} else {
-// 		return nil, nil
-// 	}
-// }
+	// [For debug] set subsegment
+	var subSegment *xray.Segment
+	if tracking {
+		_, subSegment = xray.BeginSubsegment(ctx, "Load de-identification options")
+		defer subSegment.Close(nil)
+	}
+
+	// Transformation
+	return core.TransformToDidOptions(rawDidOptions)
+}
 
 // API 접근에 대한 인증을 하는 함수입니다. HTTP 요청 Header 내에 Token 값을 OPA 서버로 전달하고 인증에 대한 응답을 받아서 처리합니다. (For echo framework)
 //	# Parameters
