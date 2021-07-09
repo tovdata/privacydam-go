@@ -16,8 +16,8 @@ import (
 	// Model
 	"github.com/tovdata/privacydam-go/core/model"
 	// Util
+	"github.com/tovdata/privacydam-go/core/logger"
 	"github.com/tovdata/privacydam-go/core/util"
-	"github.com/tovdata/privacydam-go/process/util/logger"
 
 	// Driver
 	_ "github.com/go-sql-driver/mysql"
