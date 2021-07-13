@@ -146,7 +146,7 @@ func Ex_exportData(ctx context.Context, res http.ResponseWriter, routineCount in
 	// Get queue size from environment various (default: 10,000)
 	queueSize, err := strconv.ParseInt(os.Getenv("QUEUE_SIZE"), 10, 64)
 	if err != nil {
-		queueSize = 10000
+		queueSize = 50000
 	}
 
 	// Set process count for go-routine

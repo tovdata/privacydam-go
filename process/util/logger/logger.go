@@ -168,61 +168,6 @@ func createProcessedMessage(processed model.Processed) (*sqs.SendMessageInput, e
 }
 
 /*
- * [Private function] Create measurement message (fit sqs.SendMessageInput)
- * <IN> measurement (*Measurement): measurement data
- * <OUT> (*sqs.SendMessageBatchInput): created message format
- */
-func createMeasurementMessage(measurement *Measurement) *sqs.SendMessageBatchInput {
-	// Create entries (using send message batch)
-	entries := make([]types.SendMessageBatchRequestEntry, len(measurement.Data))
-	// Set entries
-	cnt := 0
-	for key, data := range measurement.Data {
-		// Set id
-		id := measurement.GroupId + "_" + strconv.FormatInt(int64(cnt+1), 10)
-		// Set body
-		var buffer bytes.Buffer
-		buffer.WriteString("time: ")
-		buffer.WriteString(measurement.GroupId)
-		buffer.WriteString("measurement: ")
-		buffer.WriteString(key)
-
-		// Create entry
-		entry := types.SendMessageBatchRequestEntry{
-			Id:             aws.String(id),
-			MessageGroupId: aws.String("privacydam_measurement"),
-			MessageBody:    aws.String(buffer.String()),
-			MessageAttributes: map[string]types.MessageAttributeValue{
-				"api":      createSqsMessageAttributeValue(measurement.Api),
-				"duration": createSqsMessageAttributeValue(data.GetDuration()),
-				"end":      createSqsMessageAttributeValue(data.GetEndTime()),
-				"groupId":  createSqsMessageAttributeValue(measurement.GroupId),
-				"name":     createSqsMessageAttributeValue(key),
-				"start":    createSqsMessageAttributeValue(data.GetStartTime()),
-			},
-		}
-
-		fmt.Println(key)
-		fmt.Println(data.GetDuration())
-		fmt.Println(data.GetEndTime())
-		fmt.Println(data.GetStartTime())
-		fmt.Println()
-
-		// Append
-		entries[cnt] = entry
-		cnt++
-	}
-
-	// Get sqs url
-	queueUrl := os.Getenv("AWS_SQS_URL")
-	// Create message and return
-	return &sqs.SendMessageBatchInput{
-		QueueUrl: aws.String(queueUrl),
-		Entries:  entries,
-	}
-}
-
-/*
  * [Private function] Create sqs message attribute format
  * <IN> value (string): value
  * <OUT> (types.MessageAttributeValue): message attribute value (using sqs)
@@ -338,8 +283,55 @@ func (m *MeasurementData) GetDuration() string {
 
 // 측정에 대한 기록을 AWS SQS로 전송하는 함수입니다. 성능에 대한 모든 측정이 끝났을 경우에 호출합니다.
 func (m *Measurement) SendMeasurement() {
+	// Create entries (using send message batch)
+	entries := make([]types.SendMessageBatchRequestEntry, len(m.Data))
+
+	// Set entries
+	cnt := 0
+	for key, data := range m.Data {
+		// Set id
+		id := m.GroupId + "_" + strconv.FormatInt(int64(cnt+1), 10)
+		// Set body
+		var buffer bytes.Buffer
+		buffer.WriteString("time: ")
+		buffer.WriteString(m.GroupId)
+		buffer.WriteString("measurement: ")
+		buffer.WriteString(key)
+
+		// Create entry
+		entry := types.SendMessageBatchRequestEntry{
+			Id:             aws.String(id),
+			MessageGroupId: aws.String("privacydam_measurement"),
+			MessageBody:    aws.String(buffer.String()),
+			MessageAttributes: map[string]types.MessageAttributeValue{
+				"api":      createSqsMessageAttributeValue(m.Api),
+				"duration": createSqsMessageAttributeValue(data.GetDuration()),
+				"end":      createSqsMessageAttributeValue(data.GetEndTime()),
+				"groupId":  createSqsMessageAttributeValue(m.GroupId),
+				"name":     createSqsMessageAttributeValue(key),
+				"start":    createSqsMessageAttributeValue(data.GetStartTime()),
+			},
+		}
+
+		fmt.Println(key)
+		fmt.Println(data.GetDuration())
+		fmt.Println(data.GetEndTime())
+		fmt.Println(data.GetStartTime())
+		fmt.Println()
+
+		// Append
+		entries[cnt] = entry
+		cnt++
+	}
+
+	// Get sqs url
+	queueUrl := os.Getenv("AWS_SQS_URL")
 	// Create message
-	messages := createMeasurementMessage(m)
+	messages := &sqs.SendMessageBatchInput{
+		QueueUrl: aws.String(queueUrl),
+		Entries:  entries,
+	}
+
 	// Send
 	SendMessages(messages)
 }
