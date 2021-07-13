@@ -15,7 +15,7 @@ import (
 
 var (
 	Mutex        = &sync.Mutex{}
-	RoutineCount = 2
+	RoutineCount int64
 )
 
 // 빈 Evaluation 객체를 반환하는 함수입니다.
@@ -83,8 +83,15 @@ func SetRoutineCount(param interface{}) {
 	runtime.GOMAXPROCS(cpuCore)
 
 	// Set default go-routine count (min count: 4)
-	if reflect.ValueOf(param).Kind().String() == "int" || reflect.ValueOf(param).Kind().String() == "int64" {
+	if reflect.ValueOf(param).Kind().String() == "int" {
 		count := param.(int)
+		if count > 0 {
+			RoutineCount = int64(count)
+		} else {
+			RoutineCount = 4
+		}
+	} else if reflect.ValueOf(param).Kind().String() == "int64" {
+		count := param.(int64)
 		if count > 0 {
 			RoutineCount = count
 		} else {
@@ -96,7 +103,7 @@ func SetRoutineCount(param interface{}) {
 }
 
 // Go-routine이 동작할 Core 개수를 반환하는 함수입니다.
-func GetRoutineCount() int {
+func GetRoutineCount() int64 {
 	return RoutineCount
 }
 
