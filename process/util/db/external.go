@@ -124,7 +124,7 @@ func Ex_changeData(ctx context.Context, sourceId string, querySyntax string, par
 //
 //	# Response
 //	(model.Evaluation): K-anonymity evaluation result
-func Ex_exportData(ctx context.Context, res http.ResponseWriter, routineCount int, apiName string, sourceId string, querySyntax string, params []interface{}, didOptions map[string]model.AnoParamOption) (model.Evaluation, error) {
+func Ex_exportData(ctx context.Context, res http.ResponseWriter, routineCount int64, apiName string, sourceId string, querySyntax string, params []interface{}, didOptions map[string]model.AnoParamOption) (model.Evaluation, error) {
 	// Get tracking status
 	tracking := util.GetTrackingStatus("processing")
 
