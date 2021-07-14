@@ -3,7 +3,6 @@ package core
 import (
 	"bytes"
 	"encoding/json"
-	"reflect"
 	"runtime"
 	"sync"
 
@@ -76,27 +75,14 @@ func GetApiList() map[string]model.Api {
 }
 
 // Go-routine이 동작할 Core 개수를 설정하는 함수입니다.
-func SetRoutineCount(param interface{}) {
+func SetRoutineCount(count int64) {
 	// Get CPU core count
 	cpuCore := runtime.NumCPU()
 	// Set max process
 	runtime.GOMAXPROCS(cpuCore)
 
-	// Set default go-routine count (min count: 4)
-	if reflect.ValueOf(param).Kind().String() == "int" {
-		count := param.(int)
-		if count > 0 {
-			RoutineCount = int64(count)
-		} else {
-			RoutineCount = 4
-		}
-	} else if reflect.ValueOf(param).Kind().String() == "int64" {
-		count := param.(int64)
-		if count > 0 {
-			RoutineCount = count
-		} else {
-			RoutineCount = 4
-		}
+	if count > 0 {
+		RoutineCount = count
 	} else {
 		RoutineCount = 4
 	}
