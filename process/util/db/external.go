@@ -263,7 +263,7 @@ func Ex_exportData(ctx context.Context, res http.ResponseWriter, routineCount in
 //
 //	# Response
 //	(model.Evaluation): K-anonymity evaluation result
-func Ex_exportDataOnLambda(ctx context.Context, res *events.APIGatewayProxyResponse, routineCount int, apiName string, sourceId string, querySyntax string, params []interface{}, didOptions map[string]model.AnoParamOption) (model.Evaluation, error) {
+func Ex_exportDataOnLambda(ctx context.Context, res *events.APIGatewayProxyResponse, routineCount int64, apiName string, sourceId string, querySyntax string, params []interface{}, didOptions map[string]model.AnoParamOption) (model.Evaluation, error) {
 	// Get tracking status
 	tracking := util.GetTrackingStatus("processing")
 
