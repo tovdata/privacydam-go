@@ -56,7 +56,7 @@ func In_findApiFromDB(ctx context.Context, param string) (model.Api, error) {
 	if err := rows.Err(); err != nil {
 		return info, err
 	} else if info.Uuid == "" {
-		return info, errors.New("Not found API (Please check if the API alias is correct)")
+		return info, errors.New("Not found API (Please check if the API alias is correct)\r\n")
 	}
 
 	// Allocate memory to store parameters
@@ -124,7 +124,7 @@ func In_findApi(param string) (model.Api, error) {
 	if data, ok := apis[param]; ok {
 		return data, nil
 	} else {
-		return model.Api{}, errors.New("Not found API (Please check if the API alias is correct)")
+		return model.Api{}, errors.New("Not found API (Please check if the API alias is correct)\r\n")
 	}
 }
 

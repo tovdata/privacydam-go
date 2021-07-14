@@ -228,7 +228,7 @@ func Ex_exportData(ctx context.Context, res http.ResponseWriter, routineCount in
 				if tracking {
 					subSegment.Close(nil)
 				}
-				return evaluation, errors.New("Query error")
+				return evaluation, errors.New("Query error\r\n")
 			}
 		case <-quitTrans:
 			completedTrans++
@@ -364,7 +364,7 @@ func Ex_exportDataOnLambda(ctx context.Context, res *events.APIGatewayProxyRespo
 				if tracking {
 					subSegment.Close(nil)
 				}
-				return evaluation, errors.New("Query error")
+				return evaluation, errors.New("Query error\r\n")
 			}
 		case <-quitTrans:
 			completedTrans++

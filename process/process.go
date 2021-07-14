@@ -349,7 +349,7 @@ func ExportDataOnServer(ctx context.Context, res http.ResponseWriter, api model.
 	// Get routinCount
 	routineCount := core.GetRoutineCount()
 	if routineCount == 0 {
-		return model.Evaluation{}, errors.New("Invaild routine count")
+		return model.Evaluation{}, errors.New("Invaild routine count\r\n")
 	}
 
 	// Check api name
@@ -372,7 +372,7 @@ func ExportDataOnLambda(ctx context.Context, res *events.APIGatewayProxyResponse
 	// Get routinCount
 	routineCount := core.GetRoutineCount()
 	if routineCount == 0 {
-		return model.Evaluation{}, errors.New("Invaild routine count")
+		return model.Evaluation{}, errors.New("Invaild routine count\r\n")
 	}
 
 	// Check api name

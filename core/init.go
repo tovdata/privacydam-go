@@ -60,13 +60,13 @@ func ConfigTracking(configPath string) error {
 	if value, ok := config["processing"]; ok {
 		os.Setenv("TRACK_A_PROCESSING", value)
 	} else {
-		return errors.New("Configuration failed (not found processing tracking status)")
+		return errors.New("Configuration failed (not found processing tracking status)\r\n")
 	}
 	// Set config in environment various (sql tracking status)
 	if value, ok := config["database"]; ok {
 		os.Setenv("TRACK_A_DATABASE", value)
 	} else {
-		return errors.New("Configuration failed (not found databases tracking status)")
+		return errors.New("Configuration failed (not found databases tracking status)\r\n")
 	}
 	return nil
 }
@@ -153,7 +153,7 @@ func loadDatabaseConfiguration(configPath string) error {
 
 	// Return DSN
 	if dsn == "" {
-		return errors.New("DSN creation failed.")
+		return errors.New("DSN creation failed.\r\n")
 	} else {
 		// Set environment various
 		os.Setenv("DSN", dsn)

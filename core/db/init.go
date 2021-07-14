@@ -198,9 +198,9 @@ func GetDatabase(connType string, key interface{}) (model.ConnInfo, error) {
 		if value, ok := gExDB[key.(string)]; ok {
 			return value, nil
 		} else {
-			return model.ConnInfo{}, errors.New("Invalid database key")
+			return model.ConnInfo{}, errors.New("Invalid database key\r\n")
 		}
 	} else {
-		return info, errors.New("Invalid conn type")
+		return info, errors.New("Invalid conn type\r\n")
 	}
 }

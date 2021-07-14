@@ -36,7 +36,7 @@ func ExtractAccessTokenOnEcho(ctx echo.Context) (string, error) {
 			return cookie.Value, nil
 		}
 	}
-	return "", errors.New("Authentication failed (access token not fount)")
+	return "", errors.New("Authentication failed (access token not found)\r\n")
 }
 
 // HTTP 요청 내의 Header로부터 Access Token를 추출하는 함수입니다. (For aws lambda)
@@ -53,7 +53,7 @@ func ExtractAccessTokenOnLambda(ctx context.Context, req events.APIGatewayProxyR
 			return strArr[1], nil
 		}
 	}
-	return "", errors.New("Authentication failed (access token not found)")
+	return "", errors.New("Authentication failed (access token not found)\r\n")
 }
 
 // API에 대한 접근을 인증하는 함수로써 추출된 Access Token를 OPA server로 전달하고 응답을 받아 API에 대한 접근을 제어합니다.
@@ -107,8 +107,8 @@ func AuthenticateAccess(ctx context.Context, tracking bool, opaUrl string, token
 		if value == "true" {
 			return nil
 		} else {
-			return errors.New("Unauthentication")
+			return errors.New("Unauthentication\r\n")
 		}
 	}
-	return errors.New("Authentication process error")
+	return errors.New("Authentication process error\r\n")
 }
