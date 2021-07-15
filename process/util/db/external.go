@@ -14,10 +14,12 @@ import (
 	"strings"
 	"time"
 
+	// ORM
+	"github.com/jmoiron/sqlx"
+
 	// AWS
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/aws/aws-xray-sdk-go/xray"
-	"github.com/jmoiron/sqlx"
 
 	// Model
 	"github.com/tovdata/privacydam-go/core/model"

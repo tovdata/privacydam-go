@@ -7,8 +7,6 @@ import (
 	"errors"
 	"strconv"
 
-	// AWS
-
 	// Model
 	"github.com/tovdata/privacydam-go/core/model"
 	// Util

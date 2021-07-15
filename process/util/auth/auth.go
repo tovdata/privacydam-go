@@ -15,7 +15,7 @@ import (
 	"github.com/aws/aws-lambda-go/events"
 
 	// Echo framwork
-	"github.com/labstack/echo"
+	"github.com/labstack/echo/v4"
 )
 
 // HTTP 요청 내의 Header로부터 Access Token를 추출하는 함수입니다. (For echo framework)
