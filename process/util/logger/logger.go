@@ -4,8 +4,9 @@ package logger
 import (
 	"bytes"
 	"context"
-	"fmt"
+	"encoding/json"
 	"log"
+	"net/http"
 	"os"
 	"strconv"
 	"time"
@@ -211,16 +212,16 @@ func SendMessages(params *sqs.SendMessageBatchInput) error {
 
 // API 처리 성능 측정을 위한 구조체
 type Measurement struct {
-	Api     string
-	Data    map[string]*MeasurementData
-	GroupId string
+	Api     string                      `json:"api"`
+	Data    map[string]*MeasurementData `json:"data"`
+	GroupId string                      `json:"groupId"`
 }
 
 // API 처리 성능 측정 데이터 구조체
 type MeasurementData struct {
-	duration  int64
-	endTime   time.Time
-	startTime time.Time
+	Duration  int64     `json:"duration"`
+	EndTime   time.Time `json:"endTime"`
+	StartTime time.Time `json:"startTime"`
 }
 
 // API 성능 측정을 위한 객체를 생성하는 함수입니다.
@@ -248,7 +249,7 @@ func (m *Measurement) SetGroupId(groupId string) {
 // 성능 측정을 시작하는 함수입니다.
 func (m *Measurement) Start(key string) {
 	data := &MeasurementData{
-		startTime: time.Now(),
+		StartTime: time.Now(),
 	}
 	// Append
 	m.Data[key] = data
@@ -256,33 +257,40 @@ func (m *Measurement) Start(key string) {
 
 // 성능 측정을 종료하는 함수입니다. 종료 시간과 소요 시간을 계산하여 기록합니다.
 func (m *Measurement) End(key string) {
-	m.Data[key].endTime = time.Now()
-	m.Data[key].duration = (m.Data[key].endTime.UnixNano() / int64(time.Microsecond)) - (m.Data[key].startTime.UnixNano() / int64(time.Microsecond))
+	m.Data[key].EndTime = time.Now()
+	m.Data[key].Duration = (m.Data[key].EndTime.UnixNano() / int64(time.Microsecond)) - (m.Data[key].StartTime.UnixNano() / int64(time.Microsecond))
 }
 
 // 측정 시작 시간을 반환하는 함수입니다.
 //	# Response
 //	(string): start time [format: YYYY-MM-DDTHH:mm:ss.nnnnnn]
 func (m *MeasurementData) GetStartTime() string {
-	return m.startTime.Format("2006-01-02T15:04:05.999999")
+	return m.StartTime.Format("2006-01-02T15:04:05.999999")
 }
 
 // 측정 종료 시간을 반환하는 함수입니다.
 //	# Response
 //	(string): end time [format: YYYY-MM-DDTHH:mm:ss.nnnnnn]
 func (m *MeasurementData) GetEndTime() string {
-	return m.endTime.Format("2006-01-02T15:04:05.999999")
+	return m.EndTime.Format("2006-01-02T15:04:05.999999")
 }
 
 // 측정에 소요된 시간을 반환하는 함수입니다.
 //	# Response
 //	(string): duration is microseconds [format: xxx.xxx]
 func (m *MeasurementData) GetDuration() string {
-	return strconv.FormatInt(int64(m.duration/1000), 10) + "." + strconv.FormatInt(int64(m.duration%1000), 10)
+	return strconv.FormatInt(int64(m.Duration/1000), 10) + "." + strconv.FormatInt(int64(m.Duration%1000), 10)
 }
 
 // 측정에 대한 기록을 AWS SQS로 전송하는 함수입니다. 성능에 대한 모든 측정이 끝났을 경우에 호출합니다.
 func (m *Measurement) SendMeasurement(print bool) {
+	// Send performance data to custom exporter
+	sendProcessedDataToExporter(m, print)
+	// Send performance data to AWS SQS
+	sendProcessedDataToSQS(m)
+}
+
+func sendProcessedDataToSQS(m *Measurement) {
 	// Create entries (using send message batch)
 	entries := make([]types.SendMessageBatchRequestEntry, len(m.Data))
 
@@ -313,14 +321,6 @@ func (m *Measurement) SendMeasurement(print bool) {
 			},
 		}
 
-		if print {
-			fmt.Println(key)
-			fmt.Println(data.GetDuration())
-			fmt.Println(data.GetEndTime())
-			fmt.Println(data.GetStartTime())
-			fmt.Println()
-		}
-
 		// Append
 		entries[cnt] = entry
 		cnt++
@@ -336,4 +336,45 @@ func (m *Measurement) SendMeasurement(print bool) {
 
 	// Send
 	SendMessages(messages)
+}
+
+type processLog struct {
+	Api     string                   `json:"string"`
+	Data    map[string]processedData `json:"data"`
+	GroupId string                   `json:"groupId"`
+}
+type processedData struct {
+	Duration  string `json:"duration"`
+	EndTime   string `json:"endTime"`
+	StartTime string `json:"startTime"`
+}
+
+func sendProcessedDataToExporter(m *Measurement, print bool) {
+	result := processLog{
+		Api:     m.Api,
+		GroupId: m.GroupId,
+	}
+	for key, data := range m.Data {
+		result.Data[key] = processedData{
+			Duration:  data.GetDuration(),
+			EndTime:   data.GetEndTime(),
+			StartTime: data.GetStartTime(),
+		}
+	}
+
+	// Transform
+	rawBytes, err := json.Marshal(result)
+	if err != nil {
+		PrintMessage("error", err.Error())
+	}
+	buffer := bytes.NewBuffer(rawBytes)
+
+	// Get promethus ip address
+	url := os.Getenv("METRIC_EXPORTER")
+
+	// Send result (POST Method)
+	_, err = http.Post(url, "application/json", buffer)
+	if err != nil {
+		PrintMessage("error", err.Error())
+	}
 }
