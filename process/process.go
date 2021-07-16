@@ -17,7 +17,7 @@ import (
 	"github.com/aws/aws-xray-sdk-go/xray"
 
 	// Echo framework
-	"github.com/labstack/echo/v4"
+	echo "github.com/labstack/echo/v4"
 
 	// Model
 	"github.com/tovdata/privacydam-go/core/model"
