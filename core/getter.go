@@ -13,8 +13,8 @@ import (
 )
 
 var (
-	Mutex        = &sync.Mutex{}
-	RoutineCount int64
+	Mutex              = &sync.Mutex{}
+	RoutineCount int64 = 4
 )
 
 // 빈 Evaluation 객체를 반환하는 함수입니다.
