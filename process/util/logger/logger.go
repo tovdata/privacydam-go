@@ -282,7 +282,7 @@ func (m *MeasurementData) GetDuration() string {
 }
 
 // 측정에 대한 기록을 AWS SQS로 전송하는 함수입니다. 성능에 대한 모든 측정이 끝났을 경우에 호출합니다.
-func (m *Measurement) SendMeasurement() {
+func (m *Measurement) SendMeasurement(print bool) {
 	// Create entries (using send message batch)
 	entries := make([]types.SendMessageBatchRequestEntry, len(m.Data))
 
@@ -313,11 +313,13 @@ func (m *Measurement) SendMeasurement() {
 			},
 		}
 
-		fmt.Println(key)
-		fmt.Println(data.GetDuration())
-		fmt.Println(data.GetEndTime())
-		fmt.Println(data.GetStartTime())
-		fmt.Println()
+		if print {
+			fmt.Println(key)
+			fmt.Println(data.GetDuration())
+			fmt.Println(data.GetEndTime())
+			fmt.Println(data.GetStartTime())
+			fmt.Println()
+		}
 
 		// Append
 		entries[cnt] = entry
