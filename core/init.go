@@ -200,3 +200,32 @@ func createSqsClient(ctx context.Context, region string) error {
 	sqsClient = sqs.NewFromConfig(configuration)
 	return nil
 }
+
+// configPath로부터 Grafana 정보를 받아와 환경변수로 저장
+func ConfigGrafana(configPath string) error {
+	// Read data
+	rawConfiguration, err := ioutil.ReadFile(configPath)
+	if err != nil {
+		return err
+	}
+	// Transform to map
+	var config map[string]string
+	if err := json.Unmarshal(rawConfiguration, &config); err != nil {
+		return err
+	}
+
+	// Set config in environment various (grafana url : cpu information)
+	if value, ok := config["cpu-url"]; ok {
+		os.Setenv("GRAFANA_CPU_URL", value)
+	} else {
+		return errors.New("Configuration failed (not found processing tracking status)\r\n")
+	}
+	// Set config in environment various (grafana url : memory information)
+	if value, ok := config["memory-url"]; ok {
+		os.Setenv("GRAFANA_MEMORY_URL", value)
+	} else {
+		return errors.New("Configuration failed (not found databases tracking status)\r\n")
+	}
+	
+	return nil
+}
