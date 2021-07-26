@@ -373,8 +373,13 @@ func sendProcessedDataToExporter(m *Measurement, print bool) {
 	url := os.Getenv("METRIC_EXPORTER")
 
 	// Send result (POST Method)
-	_, err = http.Post(url, "application/json", buffer)
+	res, err := http.Post(url, "application/json", buffer)
 	if err != nil {
 		PrintMessage("error", err.Error())
+	} else {
+		var message bytes.Buffer
+		message.WriteString("Response status: ")
+		message.WriteString(res.Status)
+		PrintMessage("debug", message.String())
 	}
 }
