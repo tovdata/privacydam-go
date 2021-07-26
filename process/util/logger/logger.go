@@ -353,6 +353,7 @@ func sendProcessedDataToExporter(m *Measurement, print bool) {
 	result := processLog{
 		Api:     m.Api,
 		GroupId: m.GroupId,
+		Data:    make(map[string]processedData),
 	}
 	for key, data := range m.Data {
 		result.Data[key] = processedData{
@@ -380,6 +381,6 @@ func sendProcessedDataToExporter(m *Measurement, print bool) {
 		var message bytes.Buffer
 		message.WriteString("Response status: ")
 		message.WriteString(res.Status)
-		PrintMessage("debug", message.String())
+		PrintMessage("info", message.String())
 	}
 }
