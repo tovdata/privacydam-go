@@ -7,6 +7,7 @@ import (
 	"errors"
 	"os"
 	"runtime"
+	"strconv"
 	"time"
 
 	// ORM
@@ -30,8 +31,8 @@ const (
 	INTERNAL_CONN_TIMEOUT = time.Second * 30
 	EXTERNAL_CONN_TIMEOUT = time.Second * 30
 
-	INTERNAL_CONN_LIMIT = 8
-	EXTERNAL_CONN_LIMIT = 8
+	INTERNAL_CONN_LIMIT = 4
+	EXTERNAL_CONN_LIMIT = 10
 )
 
 var (
@@ -171,7 +172,20 @@ func SetConnectionPoolOptions(db *sqlx.DB, isEx bool) {
 	var timeout time.Duration
 	// Set various by type (internal, external)
 	if isEx {
-		limitConn = EXTERNAL_CONN_LIMIT
+		conn := os.Getenv("DATABASE_CONNECTION_LIMIT")
+		if conn == "" {
+			conn = strconv.FormatInt(EXTERNAL_CONN_LIMIT, 10)
+		}
+		// Transform
+		transformed, err := strconv.ParseInt(conn, 10, 64)
+		if err != nil {
+			limitConn = EXTERNAL_CONN_LIMIT
+		} else if limitConn <= 0 {
+			limitConn = EXTERNAL_CONN_LIMIT
+		} else {
+			limitConn = int(transformed)
+		}
+
 		timeout = EXTERNAL_CONN_TIMEOUT
 	} else {
 		limitConn = INTERNAL_CONN_LIMIT
