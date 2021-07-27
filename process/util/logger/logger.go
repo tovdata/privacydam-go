@@ -339,7 +339,7 @@ func sendProcessedDataToSQS(m *Measurement) {
 }
 
 type processLog struct {
-	Api     string                   `json:"string"`
+	Api     string                   `json:"api"`
 	Data    map[string]processedData `json:"data"`
 	GroupId string                   `json:"groupId"`
 }
