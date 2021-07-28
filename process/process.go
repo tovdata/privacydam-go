@@ -402,7 +402,7 @@ func GetAccessorOnServer(ctx echo.Context) model.Accessor {
 	// Extract user agent
 	accessor.UserAgent = ctx.Request().UserAgent()
 	// Extract ip address (Proxy server)
-	for _, header := range []string{"X-Forward-For", "X-Real-Ip"} {
+	for _, header := range []string{"X-Forwarded-For", "X-Real-Ip"} {
 		addresses := strings.Split(ctx.Request().Header.Get(header), ",")
 		// March from right to left until we get a public address
 		// that will be the address right before our proxy.
