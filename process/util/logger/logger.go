@@ -138,7 +138,7 @@ func createProcessedMessage(processed model.Processed) (*sqs.SendMessageInput, e
 	queueUrl := os.Getenv("AWS_SQS_URL")
 
 	// Transformt detail object to string
-	data, err := core.TransformToJSON(processed)
+	data, err := core.TransformToJSON(processed.Detail)
 	if err != nil {
 		return &sqs.SendMessageInput{}, err
 	}
@@ -373,8 +373,24 @@ func sendProcessedDataToExporter(m *Measurement, print bool) {
 	// Get promethus ip address
 	url := os.Getenv("METRIC_EXPORTER")
 
+	// Create request
+	req, err := http.NewRequest("POST", url, buffer)
+	if err != nil {
+		PrintMessage("error", err.Error())
+	}
+	// Set header
+	req.Header.Add("Content-Type", "application/json")
+	req.Header.Add("Connection", "close")
+
+	// Create client
+	client := &http.Client{
+		Timeout: time.Second * 10,
+		Transport: &http.Transport{
+			DisableKeepAlives: true,
+		},
+	}
 	// Send result (POST Method)
-	res, err := http.Post(url, "application/json", buffer)
+	res, err := client.Do(req)
 	if err != nil {
 		PrintMessage("error", err.Error())
 	} else {
@@ -383,4 +399,6 @@ func sendProcessedDataToExporter(m *Measurement, print bool) {
 		message.WriteString(res.Status)
 		PrintMessage("info", message.String())
 	}
+	defer client.CloseIdleConnections()
+	defer res.Body.Close()
 }

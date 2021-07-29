@@ -70,6 +70,8 @@ func AuthenticateAccess(ctx context.Context, tracking bool, opaUrl string, token
 	} else {
 		request, err = http.NewRequest("GET", opaUrl, nil)
 	}
+	// Set connection close
+	request.Header.Add("Connection", "close")
 	// Catch error
 	if err != nil {
 		return err
@@ -84,13 +86,17 @@ func AuthenticateAccess(ctx context.Context, tracking bool, opaUrl string, token
 
 	// Create client for execute request
 	client := &http.Client{
-		Timeout: time.Second * 30,
+		Timeout: time.Second * 10,
+		Transport: &http.Transport{
+			DisableKeepAlives: true,
+		},
 	}
 	// Execute request
 	response, err := client.Do(request)
 	if err != nil {
 		return err
 	}
+	defer client.CloseIdleConnections()
 	defer response.Body.Close()
 
 	// Read body data

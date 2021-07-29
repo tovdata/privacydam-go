@@ -119,7 +119,7 @@ func In_findApi(param string) (model.Api, error) {
 	// Get a list of api
 	apis := core.GetApiList()
 	// Unlcok
-	core.Mutex.Unlock()
+	defer core.Mutex.Unlock()
 
 	// Find api
 	if data, ok := apis[param]; ok {
