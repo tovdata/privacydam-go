@@ -41,6 +41,11 @@ func ConfigXray(address string) error {
 	})
 }
 
+// AWS X-Ray Segment 생성
+func CreateSegment(name string) (context.Context, *xray.Segment) {
+	return xray.BeginSegment(context.TODO(), name)
+}
+
 // AWS X-Ray를 이용한 추적에 대한 설정 함수입니다.
 //	# Parameters
 //	configPath (string): config file path
@@ -109,6 +114,8 @@ func InitializeApi(ctx context.Context, minute int64) {
 func UpdateApiList(ctx context.Context, mutex *sync.Mutex) {
 	// Lock
 	mutex.Lock()
+	// Unlock
+	defer mutex.Unlock()
 	// Get a list of api
 	list, err := db.In_getApiList(ctx)
 	if err != nil {
@@ -120,9 +127,6 @@ func UpdateApiList(ctx context.Context, mutex *sync.Mutex) {
 	for _, api := range list {
 		apis[api.Alias] = api
 	}
-
-	// Unlock
-	mutex.Unlock()
 }
 
 /*

@@ -116,9 +116,16 @@ func CreateConnectionPool(ctx context.Context, source model.Source, isEx bool) e
 
 	// Get a status to track a database
 	trackDB := util.GetTrackingStatus("database")
+	// Set segment and sub context various
+	var segment *xray.Segment
+	var subCtx context.Context
 
 	// Create database object for internal database
 	if trackDB {
+		// Set segment
+		subCtx, segment = xray.BeginSegment(ctx, "Initialize Database")
+		defer segment.Close(nil)
+		// Store context
 		db, err = xray.SQLContext(source.Type, source.RealDsn)
 	} else {
 		db, err = sql.Open(source.Type, source.RealDsn)
@@ -135,7 +142,7 @@ func CreateConnectionPool(ctx context.Context, source model.Source, isEx bool) e
 
 	// Test ping
 	if trackDB {
-		err = wappingDB.PingContext(ctx)
+		err = wappingDB.PingContext(subCtx)
 	} else {
 		err = wappingDB.Ping()
 	}
