@@ -50,20 +50,8 @@ func Initialization(ctx context.Context) error {
 		coreCount = 4
 	}
 
-	// Get a status to track a database
-	trackDB := util.GetTrackingStatus("database")
-	// Set segment and sub context various
-	var segment *xray.Segment
-	subCtx := ctx
-	// Create database object for internal database
-	if trackDB {
-		// Set segment
-		subCtx, segment = xray.BeginSegment(ctx, "Initialize Database")
-		defer segment.Close(nil)
-	}
-
 	// Create internal database connection pool
-	if err := createInternalConnectionPool(subCtx); err != nil {
+	if err := createInternalConnectionPool(ctx); err != nil {
 		return err
 	} else {
 		logger.PrintMessage("notice", "Successful connection with internal database")
@@ -71,7 +59,7 @@ func Initialization(ctx context.Context) error {
 
 	// Create exteranl database connection pool
 	gExDB = make(map[string]model.ConnInfo)
-	if err := createExternalConnectionPool(subCtx); err != nil {
+	if err := createExternalConnectionPool(ctx); err != nil {
 		return err
 	} else {
 		logger.PrintMessage("notice", "Successful connection with external databases")
