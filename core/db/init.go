@@ -50,8 +50,20 @@ func Initialization(ctx context.Context) error {
 		coreCount = 4
 	}
 
+	// Get a status to track a database
+	trackDB := util.GetTrackingStatus("database")
+	// Set segment and sub context various
+	var segment *xray.Segment
+	subCtx := ctx
+	// Create database object for internal database
+	if trackDB {
+		// Set segment
+		subCtx, segment = xray.BeginSegment(ctx, "Initialize Database")
+		defer segment.Close(nil)
+	}
+
 	// Create internal database connection pool
-	if err := createInternalConnectionPool(ctx); err != nil {
+	if err := createInternalConnectionPool(subCtx); err != nil {
 		return err
 	} else {
 		logger.PrintMessage("notice", "Successful connection with internal database")
@@ -59,7 +71,7 @@ func Initialization(ctx context.Context) error {
 
 	// Create exteranl database connection pool
 	gExDB = make(map[string]model.ConnInfo)
-	if err := createExternalConnectionPool(ctx); err != nil {
+	if err := createExternalConnectionPool(subCtx); err != nil {
 		return err
 	} else {
 		logger.PrintMessage("notice", "Successful connection with external databases")
@@ -116,15 +128,9 @@ func CreateConnectionPool(ctx context.Context, source model.Source, isEx bool) e
 
 	// Get a status to track a database
 	trackDB := util.GetTrackingStatus("database")
-	// Set segment and sub context various
-	var segment *xray.Segment
-	var subCtx context.Context
 
 	// Create database object for internal database
 	if trackDB {
-		// Set segment
-		subCtx, segment = xray.BeginSegment(ctx, "Initialize Database")
-		defer segment.Close(nil)
 		// Store context
 		db, err = xray.SQLContext(source.Type, source.RealDsn)
 	} else {
@@ -142,7 +148,7 @@ func CreateConnectionPool(ctx context.Context, source model.Source, isEx bool) e
 
 	// Test ping
 	if trackDB {
-		err = wappingDB.PingContext(subCtx)
+		err = wappingDB.PingContext(ctx)
 	} else {
 		err = wappingDB.Ping()
 	}
