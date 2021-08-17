@@ -34,6 +34,8 @@ type Api struct {
 	Status       string       `json:"status,omitempty"`
 	SourceId     string       `json:"source" db:"source_id"`
 	QueryContent QueryContent `json:"queryContent" db:"queryContent"`
+	Purpose      string       `json:"purpose" db:"purpose"`
+	Conditions   string       `json:"conditions" db:"conditions"`
 }
 
 // Database information (= source) format to load from internal databse
@@ -53,6 +55,7 @@ type QueryContent struct {
 	ParamsValue   []interface{}             `json:"paramsValue,omitempty"`
 	RawDidOptions sql.NullString            `json:"rawDidOptions,omitempty" db:"rawDidOptions"`
 	DidOptions    map[string]AnoParamOption `json:"didOptions,omitempty"`
+	PrivacyImpact []string					`json:"privacyImpact,omitempty"`
 }
 
 // evaluation result format for k-anonymity
