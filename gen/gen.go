@@ -30,11 +30,11 @@ func GenerateApi(ctx context.Context, api model.Api) error {
 
 	// Execute query (insert API information)
 	var result sql.Result
-	querySyntax := `INSERT INTO api (source_id, api_name, api_alias, api_type, syntax, exp_date) VALUE (?, ?, ?, ?, ?, ?)`
+	querySyntax := `INSERT INTO api (source_id, api_name, api_alias, api_type, syntax, exp_date, purpose, conditions) VALUE (?, ?, ?, ?, ?, ?, ? ,?)`
 	if dbInfo.Tracking {
-		result, err = tx.ExecContext(ctx, querySyntax, api.SourceId, api.Name, api.Alias, api.Type, api.QueryContent.Syntax, api.ExpDate)
+		result, err = tx.ExecContext(ctx, querySyntax, api.SourceId, api.Name, api.Alias, api.Type, api.QueryContent.Syntax, api.ExpDate, api.Purpose, api.Conditions)
 	} else {
-		result, err = tx.Exec(querySyntax, api.SourceId, api.Name, api.Alias, api.Type, api.QueryContent.Syntax, api.ExpDate)
+		result, err = tx.Exec(querySyntax, api.SourceId, api.Name, api.Alias, api.Type, api.QueryContent.Syntax, api.ExpDate, api.Purpose, api.Conditions)
 	}
 	// Catch error
 	if err != nil {
@@ -45,11 +45,10 @@ func GenerateApi(ctx context.Context, api model.Api) error {
 	if err != nil {
 		return err
 	}
-
 	if len(api.QueryContent.ParamsKey) > 0 {
 		// Prepare query (insert API parameters)
 		var stmt *sql.Stmt
-		querySyntax = `INSERT INTO parameter (api_id, parameter_key) VALUE (?, ?)`
+		querySyntax = `INSERT INTO parameter (api_id, parameter_key, privacy_impact) VALUE (?, ?, ?)`
 		if dbInfo.Tracking {
 			stmt, err = tx.PrepareContext(ctx, querySyntax)
 		} else {
@@ -61,12 +60,12 @@ func GenerateApi(ctx context.Context, api model.Api) error {
 		}
 
 		// Execute query (insert API parameters)
-		for _, param := range api.QueryContent.ParamsKey {
+		for i, param := range api.QueryContent.ParamsKey {
 			var err error
 			if dbInfo.Tracking {
-				_, err = stmt.ExecContext(ctx, insertedId, param)
+				_, err = stmt.ExecContext(ctx, insertedId, param, api.QueryContent.PrivacyImpact[i])
 			} else {
-				_, err = stmt.Exec(insertedId, param)
+				_, err = stmt.Exec(insertedId, param, api.QueryContent.PrivacyImpact[i])
 			}
 			// Catch error
 			if err != nil {
